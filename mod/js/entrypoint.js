@@ -2,6 +2,7 @@ import { renderAccountManager, autofillActiveAccount } from './accountManager.js
 import { updateRanking, setupRankingModalEvents } from './rankingModal.js';
 import { setupCustomControls, setupRankingPanelDrag } from './customControls.js';
 import { setupMarkerInteractionOptimized } from './markerInteraction.js';
+import { initializeMessageObserver } from './notificationBox.js';
 
 // GPU 驗證：啟動時印出 WebGL 渲染器資訊
 console.log((() => {
@@ -39,6 +40,7 @@ window.addEventListener('pywebviewready', async function() {
 });
 document.addEventListener('DOMContentLoaded', () => {
     try {
+        initializeMessageObserver(); // 初始化訊息觀察者
         setupMarkerInteractionOptimized();
         setupCustomControls(); // 確保 DOM ready 時也掛載
     } catch(e) {}
