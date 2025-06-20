@@ -40,7 +40,22 @@ if not os.path.exists(index_file):
     raise FileNotFoundError('找不到 index.html，請確認檔案存在於同一資料夾')
 
 api = Api()
-chromium_args = ['--enable-gpu', '--ignore-gpu-blacklist', '--enable-webgl', '--enable-accelerated-2d-canvas', '--enable-features=VaapiVideoDecoder']
+chromium_args = [
+    '--enable-gpu',
+    '--ignore-gpu-blacklist',
+    '--enable-webgl',
+    '--enable-accelerated-2d-canvas',
+    '--enable-features=VaapiVideoDecoder',
+    '--enable-zero-copy',
+    '--enable-native-gpu-memory-buffers',
+    '--enable-gpu-rasterization',
+    '--enable-oop-rasterization',
+    '--enable-accelerated-video-decode',
+    '--use-gl=desktop',  # 或可嘗試 '--use-angle=gl' 依顯卡環境調整
+    '--ignore-gpu-blocklist',
+    '--disable-software-rasterizer',
+    '--enable-features=CanvasOopRasterization'
+]
 try:
     window = webview.create_window(
         '逆統戰：烽火',
