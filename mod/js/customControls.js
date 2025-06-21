@@ -274,7 +274,32 @@ export function setupCustomControls() {
             }
             factionMapContainer.style.zIndex = '1000';
         }
+        // 新增：hash 監控，離開 portalmap 自動隱藏（即時處理）
+        function hideFactionMapImmediate() {
+            if (factionMapVisible) {
+                factionMapContainer.style.display = 'none';
+                factionMapBtn.textContent = '顯示勢力分布圖';
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                disableFactionMapObserver();
+                window.removeEventListener('resize', alignCanvasToMapArea);
+                factionMapVisible = false;
+            }
+        }
+        window.addEventListener('hashchange', function() {
+            if (location.hash !== '#/portalmap') {
+                hideFactionMapImmediate();
+            }
+        });
+        // 立即檢查（進入頁面時 hash 不符也馬上隱藏）
+        if (location.hash !== '#/portalmap') {
+            hideFactionMapImmediate();
+        }
         factionMapBtn.onclick = function() {
+            // 新增：只允許在 #/portalmap 顯示
+            if (location.hash !== '#/portalmap') {
+                hideFactionMapImmediate();
+                return;
+            }
             factionMapVisible = !factionMapVisible;
             if (factionMapVisible) {
                 ensureCanvasLayer();

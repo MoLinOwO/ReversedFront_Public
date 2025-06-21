@@ -22,6 +22,11 @@ function getCityToMarker(markerData) {
     return cityToMarker;
 }
 function drawConnectionLinesOptimized(marker, markerData) {
+    // 新增：只允許在 #/portalmap 顯示
+    if (location.hash !== '#/portalmap') {
+        clearConnectionLines();
+        return;
+    }
     const id = getMarkerId(marker);
     const data = markerData[id];
     if (!data) return;
