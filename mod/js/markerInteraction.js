@@ -3,7 +3,11 @@ import { getCityName, getMarkerId } from './markerUtils.js';
 import { showEditDialog, showDetailDialog } from './markerDialogs.js';
 import { drawConnectionLinesOptimized, clearConnectionLines } from './markerConnections.js';
 
-// 移除舊版 setupMarkerInteraction 及相關程式碼，只保留優化後的 setupMarkerInteractionOptimized
+// --- End 修正版 ---
+
+// 儲存 observer 以便重複呼叫時清理
+let _rf_marker_map_observer = null;
+
 export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
     let markerData = {};
     let tooltip = document.getElementById('map-tooltip-optimized');
@@ -49,6 +53,14 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
         markerData = await loadMarkerDataFromYaml();
         const markers = Array.from(document.querySelectorAll('[class^="PortalMap_marker"], [class^="PortalMap_markerCapital"]'));
         markers.forEach(marker => {
+            // 先移除舊事件
+            if (marker._rf_marker_handlers) {
+                marker.removeEventListener('mouseenter', marker._rf_marker_handlers.mouseenter);
+                marker.removeEventListener('mousemove', marker._rf_marker_handlers.mousemove);
+                marker.removeEventListener('mouseleave', marker._rf_marker_handlers.mouseleave);
+                marker.removeEventListener('click', marker._rf_marker_handlers.click);
+                marker.removeEventListener('dblclick', marker._rf_marker_handlers.dblclick);
+            }
             // 處理士兵SVG與光輝
             const swords = marker.querySelector('.PortalMap_marker2swords__1V7ah');
             if (swords && swords.tagName === 'IMG') {
@@ -116,7 +128,9 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
             marker.style.cursor = 'pointer';
             marker.style.boxShadow = `0 0 8px 2px ${marker.style.backgroundColor}, 0 0 18px 6px ${marker.style.backgroundColor.replace(')',',0.35)')}`;
             marker.style.transition = 'box-shadow 0.2s';
-            marker.onmouseenter = function(e) {
+            const has2Swords = marker.querySelector('.PortalMap_marker2swords__1V7ah') !== null;
+            // 新事件處理
+            const mouseenter = function(e) {
                 const id = getMarkerId(marker);
                 const data = markerData[id];
                 const cityName = (data && data.cityName) ? data.cityName : getCityName(marker);
@@ -125,16 +139,15 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
                 if (data && data.airport) drawConnectionLinesOptimized(marker, markerData, 'airport');
                 if (data && data.port) drawConnectionLinesOptimized(marker, markerData, 'port');
             };
-            marker.onmousemove = function(e) {
+            const mousemove = function(e) {
                 tooltip.style.left = (e.clientX + 12) + 'px';
                 tooltip.style.top = (e.clientY + 8) + 'px';
             };
-            marker.onmouseleave = function() {
+            const mouseleave = function() {
                 hideTooltip();
                 clearConnectionLines();
             };
-            const has2Swords = marker.querySelector('.PortalMap_marker2swords__1V7ah') !== null;
-            marker.onclick = function(e) {
+            const click = function(e) {
                 if (e.detail === 1) {
                     setTimeout(() => {
                         if (!marker._dblClicked) {
@@ -150,7 +163,7 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
                     }, 200);
                 }
             };
-            marker.ondblclick = function(e) {
+            const dblclick = function(e) {
                 marker._dblClicked = true;
                 if (has2Swords) {
                     showDetailDialog(marker, markerData);
@@ -158,16 +171,26 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
                     showEditDialog(marker, markerData);
                 }
             };
+            marker.addEventListener('mouseenter', mouseenter);
+            marker.addEventListener('mousemove', mousemove);
+            marker.addEventListener('mouseleave', mouseleave);
+            marker.addEventListener('click', click);
+            marker.addEventListener('dblclick', dblclick);
+            marker._rf_marker_handlers = { mouseenter, mousemove, mouseleave, click, dblclick };
         });
     }
     bindMarkers();
     // 動態監聽地圖刷新
     const mapBox = document.querySelector('.PortalMap_mapBox__3WtlM');
     if (mapBox) {
-        const observer = new MutationObserver(() => {
+        // 清理舊 observer
+        if (_rf_marker_map_observer) {
+            _rf_marker_map_observer.disconnect();
+        }
+        _rf_marker_map_observer = new MutationObserver(() => {
             bindMarkers();
         });
-        observer.observe(mapBox, { childList: true, subtree: true });
+        _rf_marker_map_observer.observe(mapBox, { childList: true, subtree: true });
     }
 }
-// --- End 修正版 ---
+// --- End ---

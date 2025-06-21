@@ -3,6 +3,7 @@ import { updateRanking, setupRankingModalEvents } from './rankingModal.js';
 import { setupCustomControls, setupRankingPanelDrag } from './customControls.js';
 import { setupMarkerInteractionOptimized } from './markerInteraction.js';
 import { initializeMessageObserver } from './notificationBox.js';
+import { saveMarkerDataToYaml } from './markerData.js';
 
 // GPU 驗證：啟動時印出 WebGL 渲染器資訊
 console.log((() => {
@@ -18,6 +19,9 @@ console.log((() => {
     return 'Error: ' + e;
   }
 })());
+
+// 防止重複初始化
+let markerInteractionInitialized = false;
 
 window.addEventListener('pywebviewready', async function() {
     // 帳號管理
@@ -37,17 +41,32 @@ window.addEventListener('pywebviewready', async function() {
             alert('未偵測到 pywebview API');
         }
     };
+    // 只初始化一次 marker 互動
+    if (!markerInteractionInitialized) {
+        setupMarkerInteractionOptimized();
+        markerInteractionInitialized = true;
+    }
 });
 document.addEventListener('DOMContentLoaded', () => {
     try {
         initializeMessageObserver(); // 初始化訊息觀察者
-        setupMarkerInteractionOptimized();
+        if (!markerInteractionInitialized) {
+            setupMarkerInteractionOptimized();
+            markerInteractionInitialized = true;
+        }
         setupCustomControls(); // 確保 DOM ready 時也掛載
     } catch(e) {}
 });
-// 直接定時偵測並啟用 marker 互動，無需依賴 hash/mapBox
+// 只偵測地圖 DOM 是否有變化，必要時才重新綁定 marker 互動
+let lastMarkerCount = 0;
 setInterval(() => {
     try {
-        setupMarkerInteractionOptimized();
+        const markers = document.querySelectorAll('[class^="PortalMap_marker"], [class^="PortalMap_markerCapital"]');
+        if (markers.length !== lastMarkerCount) {
+            setupMarkerInteractionOptimized();
+            lastMarkerCount = markers.length;
+        }
     } catch(e) {}
 }, 1000);
+
+window.saveMarkerDataToYaml = saveMarkerDataToYaml;

@@ -66,7 +66,8 @@ try:
         resizable=True,
         fullscreen=True,
         gui='cef',
-        chromium_args=chromium_args
+        chromium_args=chromium_args,
+        minimized=True
     )
 except Exception:
     window = webview.create_window(

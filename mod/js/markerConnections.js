@@ -21,12 +21,10 @@ function getCityToMarker(markerData) {
     _cityToMarkerCacheKey = key;
     return cityToMarker;
 }
-function drawConnectionLinesOptimized(marker, markerData, type) {
+function drawConnectionLinesOptimized(marker, markerData) {
     const id = getMarkerId(marker);
     const data = markerData[id];
-    if (!data || !data[type]) return;
-    const targets = data[type].split(/,|，/).map(s=>s.trim()).filter(Boolean);
-    if (!targets.length) return;
+    if (!data) return;
     const cityToMarker = getCityToMarker(markerData);
     const rect = marker.getBoundingClientRect();
     const x0 = rect.left + rect.width/2;
@@ -44,51 +42,76 @@ function drawConnectionLinesOptimized(marker, markerData, type) {
         svg.style.zIndex = 99998;
         document.body.appendChild(svg);
     }
-    // 物件池重用
+    // 只清空一次
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    targets.forEach(city => {
-        const targetMarker = cityToMarker[city];
-        if (!targetMarker) return;
-        const trect = targetMarker.getBoundingClientRect();
-        const x1 = trect.left + trect.width/2;
-        const y1 = trect.top + trect.height/2;
-        const color = type === 'airport' ? '#fe9898' : '#98fefe';
-        const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-        line.setAttribute('x1', x0);
-        line.setAttribute('y1', y0);
-        line.setAttribute('x2', x1);
-        line.setAttribute('y2', y1);
-        line.setAttribute('stroke', color);
-        line.setAttribute('stroke-width', '3');
-        line.setAttribute('stroke-dasharray', '10,8');
-        line.setAttribute('opacity', '0.85');
-        svg.appendChild(line);
-        let dx = x1 - x0;
-        let dy = y1 - y0;
-        let offsetX = 0, offsetY = 0, anchor = 'start';
-        if (Math.abs(dx) > Math.abs(dy)) {
-            offsetX = dx > 0 ? 16 : -16;
-            offsetY = -8;
-            anchor = dx > 0 ? 'start' : 'end';
-        } else {
-            offsetX = 0;
-            offsetY = dy > 0 ? 22 : -16;
-            anchor = 'middle';
-        }
-        const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-        label.textContent = city;
-        label.setAttribute('x', x1 + offsetX);
-        label.setAttribute('y', y1 + offsetY);
-        label.setAttribute('fill', '#fff');
-        label.setAttribute('font-size', '1.05em');
-        label.setAttribute('font-weight', 'bold');
-        label.setAttribute('stroke', '#222');
-        label.setAttribute('stroke-width', '0.8');
-        label.setAttribute('paint-order', 'stroke');
-        label.setAttribute('style', 'pointer-events:none;user-select:none;text-shadow:0 2px 8px #000a;');
-        label.setAttribute('text-anchor', anchor);
-        svg.appendChild(label);
-    });
+    // 機場線
+    if (data.airport) {
+        const targets = data.airport.split(/,|，/).map(s=>s.trim()).filter(Boolean);
+        targets.forEach(city => {
+            const targetMarker = cityToMarker[city];
+            if (!targetMarker) return;
+            const trect = targetMarker.getBoundingClientRect();
+            const x1 = trect.left + trect.width/2;
+            const y1 = trect.top + trect.height/2;
+            const color = '#fe9898';
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', x0);
+            line.setAttribute('y1', y0);
+            line.setAttribute('x2', x1);
+            line.setAttribute('y2', y1);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', 3);
+            line.setAttribute('opacity', 0.85);
+            line.setAttribute('stroke-dasharray', '8,6'); // 虛線
+            svg.appendChild(line);
+            // 顯示地名
+            const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+            text.setAttribute('x', x1 + 8);
+            text.setAttribute('y', y1 - 8);
+            text.setAttribute('fill', color);
+            text.setAttribute('font-size', '1em');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('stroke', '#222');
+            text.setAttribute('stroke-width', '0.5');
+            text.setAttribute('paint-order', 'stroke');
+            text.textContent = city;
+            svg.appendChild(text);
+        });
+    }
+    // 港口線
+    if (data.port) {
+        const targets = data.port.split(/,|，/).map(s=>s.trim()).filter(Boolean);
+        targets.forEach(city => {
+            const targetMarker = cityToMarker[city];
+            if (!targetMarker) return;
+            const trect = targetMarker.getBoundingClientRect();
+            const x1 = trect.left + trect.width/2;
+            const y1 = trect.top + trect.height/2;
+            const color = '#98fefe';
+            const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+            line.setAttribute('x1', x0);
+            line.setAttribute('y1', y0);
+            line.setAttribute('x2', x1);
+            line.setAttribute('y2', y1);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', 3);
+            line.setAttribute('opacity', 0.85);
+            line.setAttribute('stroke-dasharray', '8,6'); // 虛線
+            svg.appendChild(line);
+            // 顯示地名
+            const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+            text.setAttribute('x', x1 + 8);
+            text.setAttribute('y', y1 - 8);
+            text.setAttribute('fill', color);
+            text.setAttribute('font-size', '1em');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('stroke', '#222');
+            text.setAttribute('stroke-width', '0.5');
+            text.setAttribute('paint-order', 'stroke');
+            text.textContent = city;
+            svg.appendChild(text);
+        });
+    }
 }
 function clearConnectionLines() {
     const svg = document.getElementById('map-connection-svg');

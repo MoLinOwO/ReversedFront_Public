@@ -4,6 +4,7 @@ import { getFactionColor, getAllFactions } from './factionColorMap.js';
 const HIGHLIGHTER_ID = 'rf-custom-highlighter';
 let fadeOutTimer = null; // Timer for the fade-out effect
 let lastTextContent = null; // Cache the last text to avoid redundant updates
+let isInitialized = false; // Guard against re-initialization
 
 /**
  * Creates and injects the dedicated highlighter element and a style tag.
@@ -131,20 +132,22 @@ function showHighlighter(text) {
     const highlighterElement = document.getElementById(HIGHLIGHTER_ID);
     if (!highlighterElement) return;
 
+    // Always clear any existing fade-out timer to prevent premature hiding.
+    if (fadeOutTimer) {
+        clearTimeout(fadeOutTimer);
+    }
+
     const trimmedText = text.trim();
 
-    // Avoid re-rendering if the message is identical
-    if (trimmedText === lastTextContent && highlighterElement.style.opacity === '1') {
-        // If message is the same, just reset the fade-out timer
-        if (fadeOutTimer) clearTimeout(fadeOutTimer);
-    } else {
-        // If message is new, update styles and fade in
+    // Update content and fade in if the message is new, or if the box was hidden.
+    // This avoids re-rendering the same content if it's already visible.
+    if (trimmedText !== lastTextContent || highlighterElement.style.opacity !== '1') {
         lastTextContent = trimmedText;
         updateDynamicStyles(trimmedText);
         highlighterElement.style.opacity = '1';
     }
 
-    // Schedule fade-out
+    // Schedule a new fade-out for the current message.
     const FADE_OUT_DELAY = 4000;
     fadeOutTimer = setTimeout(() => {
         highlighterElement.style.opacity = '0';
@@ -153,6 +156,13 @@ function showHighlighter(text) {
 }
 
 export function initializeMessageObserver() {
+    // Prevent multiple initializations, which would lead to memory leaks
+    // by attaching multiple observers and event listeners.
+    if (isInitialized) {
+        return;
+    }
+    isInitialized = true;
+
     setupHighlighter();
 
     const handleMutation = (targetNode) => {

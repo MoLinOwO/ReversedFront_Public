@@ -226,6 +226,15 @@ function showDetailDialog(marker, markerData) {
     html += `<hr style='border:none;border-top:2px solid #fff5;margin:0 0 18px 0;'>`;
     html += `<div style='display:flex;gap:18px;margin-bottom:10px;align-items:center;'><span style='font-weight:bold;font-size:1.15em;'>主權</span><span style='background:#333;padding:4px 18px;border-radius:8px;font-size:1.1em;'>${data.sovereignty||''}</span></div>`;
     html += `<div style='display:flex;gap:18px;align-items:center;'><span style='font-weight:bold;font-size:1.15em;'>控制</span><span style='background:${factionColor};color:${isWhiteFaction?'#222':'#fff'};padding:4px 18px;border-radius:8px;font-size:1.1em;font-weight:bold;box-shadow:0 1px 6px #0003;'>${faction}</span></div>`;
+    // 新增分隔線
+    html += `<hr style='border:none;border-top:2px solid #fff5;margin:18px 0 10px 0;'>`;
+    // 新增顯示機場與港口
+    if (data.airport) {
+        html += `<div style='display:flex;gap:18px;margin-bottom:10px;align-items:center;'><span style='font-weight:bold;font-size:1.15em;'>機場前往</span><span style='background:#1dbf60;padding:4px 18px;border-radius:8px;font-size:1.1em;'>${data.airport}</span></div>`;
+    }
+    if (data.port) {
+        html += `<div style='display:flex;gap:18px;margin-bottom:10px;align-items:center;'><span style='font-weight:bold;font-size:1.15em;'>港口前往</span><span style='background:#1dbf60;padding:4px 18px;border-radius:8px;font-size:1.1em;'>${data.port}</span></div>`;
+    }
     html += `<hr style='border:none;border-top:2px solid #fff5;margin:18px 0 10px 0;'>`;
     if (data.npc && data.npc.length) {
         html += `<div style='font-weight:bold;font-size:1.15em;margin-bottom:8px;'>NPC 支援</div>`;
