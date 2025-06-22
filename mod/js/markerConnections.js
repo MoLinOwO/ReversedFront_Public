@@ -21,6 +21,21 @@ function getCityToMarker(markerData) {
     _cityToMarkerCacheKey = key;
     return cityToMarker;
 }
+function findTargetMarker(cityToMarker, city) {
+    const keys = [
+        city,
+        city.trim(),
+        city.trim().toLowerCase(),
+        city.replace(/\s+/g, ''),
+        city.trim().replace(/\s+/g, ''),
+        city.trim().replace(/\s+/g, '').toLowerCase()
+    ];
+    for (const k of keys) {
+        if (cityToMarker[k]) return cityToMarker[k];
+    }
+    console.warn('[RF DEBUG] 找不到航線目標城市:', city, Object.keys(cityToMarker));
+    return null;
+}
 function drawConnectionLinesOptimized(marker, markerData) {
     // 新增：只允許在 #/portalmap 顯示
     if (location.hash !== '#/portalmap') {
@@ -53,7 +68,7 @@ function drawConnectionLinesOptimized(marker, markerData) {
     if (data.airport) {
         const targets = data.airport.split(/,|，/).map(s=>s.trim()).filter(Boolean);
         targets.forEach(city => {
-            const targetMarker = cityToMarker[city];
+            const targetMarker = findTargetMarker(cityToMarker, city);
             if (!targetMarker) return;
             const trect = targetMarker.getBoundingClientRect();
             const x1 = trect.left + trect.width/2;
@@ -87,7 +102,7 @@ function drawConnectionLinesOptimized(marker, markerData) {
     if (data.port) {
         const targets = data.port.split(/,|，/).map(s=>s.trim()).filter(Boolean);
         targets.forEach(city => {
-            const targetMarker = cityToMarker[city];
+            const targetMarker = findTargetMarker(cityToMarker, city);
             if (!targetMarker) return;
             const trect = targetMarker.getBoundingClientRect();
             const x1 = trect.left + trect.width/2;

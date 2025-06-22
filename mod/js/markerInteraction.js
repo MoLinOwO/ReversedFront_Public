@@ -146,6 +146,8 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
             const mouseleave = function() {
                 hideTooltip();
                 clearConnectionLines();
+                // 強制重設 tooltip 狀態，避免殘留
+                tooltip.textContent = '';
             };
             const click = function(e) {
                 if (e.detail === 1) {
@@ -160,6 +162,10 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
                             }
                         }
                         marker._dblClicked = false;
+                        // 點擊後也強制清除 tooltip 與航線
+                        hideTooltip();
+                        clearConnectionLines();
+                        tooltip.textContent = '';
                     }, 200);
                 }
             };
@@ -170,6 +176,10 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
                 } else {
                     showEditDialog(marker, markerData);
                 }
+                // 雙擊後也強制清除 tooltip 與航線
+                hideTooltip();
+                clearConnectionLines();
+                tooltip.textContent = '';
             };
             marker.addEventListener('mouseenter', mouseenter);
             marker.addEventListener('mousemove', mousemove);

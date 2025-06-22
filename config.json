@@ -1,1 +1,7 @@
-{"exe_path": "E:\\moyul\\Desktop\\ReversedFront\\main.py", "account_file": "E:\\moyul\\Desktop\\ReversedFront\\account_list.json"}
+{
+  "exe_path": "E:\\moyul\\Desktop\\ReversedFront\\main.py",
+  "account_file": "E:\\moyul\\Desktop\\ReversedFront\\account_list.json",
+  "bgm_volume": 0.14,
+  "se_volume": 0.15,
+  "se147_muted": false
+}
