@@ -1,7 +1,7 @@
 import { loadMarkerDataFromYaml } from './markerData.js';
 import { getCityName, getMarkerId } from './markerUtils.js';
 import { showEditDialog, showDetailDialog } from './markerDialogs.js';
-import { drawConnectionLinesOptimized, clearConnectionLines } from './markerConnections.js';
+import { drawConnectionLinesOptimized, clearConnectionLines, resetCityToMarkerCache } from './markerConnections.js';
 
 // --- End 修正版 ---
 
@@ -49,8 +49,10 @@ export function setupMarkerInteractionOptimized({ useCanvas = false } = {}) {
         const { loadMarkerDataFromYaml } = await import('./markerData.js');
         const { getCityName, getMarkerId } = await import('./markerUtils.js');
         const { showEditDialog, showDetailDialog } = await import('./markerDialogs.js');
-        const { drawConnectionLinesOptimized, clearConnectionLines } = await import('./markerConnections.js');
+        const { drawConnectionLinesOptimized, clearConnectionLines, resetCityToMarkerCache } = await import('./markerConnections.js');
         markerData = await loadMarkerDataFromYaml();
+        // 每次綁定都強制刷新 cityToMarker 快取
+        resetCityToMarkerCache();
         const markers = Array.from(document.querySelectorAll('[class^="PortalMap_marker"], [class^="PortalMap_markerCapital"]'));
         markers.forEach(marker => {
             // 先移除舊事件

@@ -84,10 +84,23 @@ function drawConnectionLinesOptimized(marker, markerData) {
             line.setAttribute('opacity', 0.85);
             line.setAttribute('stroke-dasharray', '8,6'); // 虛線
             svg.appendChild(line);
-            // 顯示地名
+            // 顯示地名（自動調整位置避免重疊）
+            let dx = x1 - x0;
+            let dy = y1 - y0;
+            let offsetX = 0, offsetY = 0;
+            // 根據方向自動調整文字位置
+            if (dx >= 0 && dy <= 0) { // 右上
+                offsetX = 10; offsetY = -10;
+            } else if (dx >= 0 && dy > 0) { // 右下
+                offsetX = 10; offsetY = 18;
+            } else if (dx < 0 && dy <= 0) { // 左上
+                offsetX = -60; offsetY = -10;
+            } else { // 左下
+                offsetX = -60; offsetY = 18;
+            }
             const text = document.createElementNS('http://www.w3.org/2000/svg','text');
-            text.setAttribute('x', x1 + 8);
-            text.setAttribute('y', y1 - 8);
+            text.setAttribute('x', x1 + offsetX);
+            text.setAttribute('y', y1 + offsetY);
             text.setAttribute('fill', color);
             text.setAttribute('font-size', '1em');
             text.setAttribute('font-weight', 'bold');
@@ -118,10 +131,23 @@ function drawConnectionLinesOptimized(marker, markerData) {
             line.setAttribute('opacity', 0.85);
             line.setAttribute('stroke-dasharray', '8,6'); // 虛線
             svg.appendChild(line);
-            // 顯示地名
+            // 顯示地名（自動調整位置避免重疊）
+            let dx = x1 - x0;
+            let dy = y1 - y0;
+            let offsetX = 0, offsetY = 0;
+            // 根據方向自動調整文字位置
+            if (dx >= 0 && dy <= 0) { // 右上
+                offsetX = 10; offsetY = -10;
+            } else if (dx >= 0 && dy > 0) { // 右下
+                offsetX = 10; offsetY = 18;
+            } else if (dx < 0 && dy <= 0) { // 左上
+                offsetX = -60; offsetY = -10;
+            } else { // 左下
+                offsetX = -60; offsetY = 18;
+            }
             const text = document.createElementNS('http://www.w3.org/2000/svg','text');
-            text.setAttribute('x', x1 + 8);
-            text.setAttribute('y', y1 - 8);
+            text.setAttribute('x', x1 + offsetX);
+            text.setAttribute('y', y1 + offsetY);
             text.setAttribute('fill', color);
             text.setAttribute('font-size', '1em');
             text.setAttribute('font-weight', 'bold');
@@ -136,5 +162,10 @@ function drawConnectionLinesOptimized(marker, markerData) {
 function clearConnectionLines() {
     const svg = document.getElementById('map-connection-svg');
     if (svg) svg.innerHTML = '';
+}
+// 強制刷新 cityToMarker 快取
+export function resetCityToMarkerCache() {
+    _cityToMarkerCache = null;
+    _cityToMarkerCacheKey = '';
 }
 export { drawConnectionLinesOptimized, clearConnectionLines };

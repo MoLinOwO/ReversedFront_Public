@@ -1,4 +1,5 @@
 import os
+
 import sys
 import shutil
 import requests
@@ -7,7 +8,7 @@ from bs4 import BeautifulSoup
 import subprocess
 
 # 本地版本號
-LOCAL_VERSION = "1.2"
+LOCAL_VERSION = "1.5"
 # 雲端分享頁面
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 # 解析版本號用正則
@@ -130,31 +131,6 @@ def get_version_from_filename(filename):
     if match:
         return match.group(1)
     return None
-
-def get_cloud_latest_info():
-    try:
-        resp = requests.get(CLOUD_PAGE_URL, timeout=10)
-        resp.raise_for_status()
-        soup = BeautifulSoup(resp.text, 'html.parser')
-        direct_div = soup.find('div', class_='directDownload')
-        if not direct_div:
-            return None, None, None
-        # 解析檔名
-        file_div = direct_div.find('div')
-        filename = file_div.text.strip().split('\xa0')[0] if file_div else None
-        # 解析下載連結
-        a_tag = direct_div.find('a', id='downloadFile')
-        download_url = a_tag['href'] if a_tag else None
-        # 解析版本號
-        remote_version = None
-        if filename:
-            m = VERSION_PATTERN.search(filename)
-            if m:
-                remote_version = m.group(1)
-        return filename, remote_version, download_url
-    except Exception as e:
-        print(f"[更新] 雲端頁面解析失敗: {e}")
-        return None, None, None
 
 def try_cleanup_old_exe():
     import time
