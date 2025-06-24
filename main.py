@@ -28,6 +28,7 @@ import webview
 from mod.py.account_manager import get_accounts, add_account, delete_account, set_active_account, get_active_account, ensure_account_file
 from mod.py.config_utils import save_exe_path_to_config, get_account_file
 from mod.py.yaml_utils import save_yaml, load_yaml
+from mod.py.auto_update import get_cloud_latest_info, download_and_restart, try_cleanup_old_exe
 
 # 啟動時儲存 exe 路徑到 config.json
 save_exe_path_to_config()
@@ -254,7 +255,7 @@ def start_main_window():
         )
 
     def on_loaded():
-        filename, remote_version, download_url = get_cloud_latest_info()
+        filename, remote_version, download_url = get_cloud_latest_info(CLOUD_PAGE_URL)
         if remote_version and remote_version != LOCAL_VERSION and download_url:
             js = f'confirm("發現新版本 v{remote_version}，是否下載？")'
             result = window.evaluate_js(js)
