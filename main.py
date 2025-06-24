@@ -1,6 +1,17 @@
 import os
 import sys
 import shutil
+import requests
+import re
+from bs4 import BeautifulSoup
+import subprocess
+
+# 本地版本號
+LOCAL_VERSION = "1.2"
+# 雲端分享頁面
+CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
+# 解析版本號用正則
+VERSION_PATTERN = re.compile(r"v(\d+\.\d+)")
 
 # 僅在根目錄沒有 config.json 時才複製範本，不覆蓋已存在檔案
 root_config = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'config.json'))
@@ -102,6 +113,10 @@ class Api:
             }
         else:
             return {'bgm': 1.0, 'se': 1.0, 'se147Muted': False}
+    def auto_login(self, account, password):
+        js_code = f'window.autoLogin({repr(account)}, {repr(password)});'
+        window = webview.windows[0]
+        return window.evaluate_js(js_code)
 
 # 設定靜態檔案資料夾
 static_dir = os.path.abspath(os.path.dirname(__file__))
@@ -109,48 +124,146 @@ index_file = os.path.join(static_dir, 'index.html')
 if not os.path.exists(index_file):
     raise FileNotFoundError('找不到 index.html，請確認檔案存在於同一資料夾')
 
-api = Api()
-chromium_args = [
-    '--enable-gpu',
-    '--ignore-gpu-blacklist',
-    '--enable-webgl',
-    '--enable-accelerated-2d-canvas',
-    '--enable-features=VaapiVideoDecoder',
-    '--enable-zero-copy',
-    '--enable-native-gpu-memory-buffers',
-    '--enable-gpu-rasterization',
-    '--enable-oop-rasterization',
-    '--enable-accelerated-video-decode',
-    '--use-gl=desktop',  # 或可嘗試 '--use-angle=gl' 依顯卡環境調整
-    '--ignore-gpu-blocklist',
-    '--disable-software-rasterizer',
-    '--enable-features=CanvasOopRasterization'
-]
-try:
-    window = webview.create_window(
-        '逆統戰：烽火',
-        index_file,
-        js_api=api,
-        width=1280,
-        height=720,
-        resizable=True,
-        fullscreen=True,
-        gui='cef',
-        chromium_args=chromium_args,
-        minimized=True
-    )
-except Exception:
-    window = webview.create_window(
-        '逆統戰：烽火',
-        index_file,
-        js_api=api,
-        width=1280,
-        height=720,
-        resizable=True,
-        fullscreen=True
-    )
-webview.start(debug=True)
+def get_version_from_filename(filename):
+    match = VERSION_PATTERN.search(filename)
+    if match:
+        return match.group(1)
+    return None
 
+def get_cloud_latest_info():
+    try:
+        resp = requests.get(CLOUD_PAGE_URL, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        direct_div = soup.find('div', class_='directDownload')
+        if not direct_div:
+            return None, None, None
+        # 解析檔名
+        file_div = direct_div.find('div')
+        filename = file_div.text.strip().split('\xa0')[0] if file_div else None
+        # 解析下載連結
+        a_tag = direct_div.find('a', id='downloadFile')
+        download_url = a_tag['href'] if a_tag else None
+        # 解析版本號
+        remote_version = None
+        if filename:
+            m = VERSION_PATTERN.search(filename)
+            if m:
+                remote_version = m.group(1)
+        return filename, remote_version, download_url
+    except Exception as e:
+        print(f"[更新] 雲端頁面解析失敗: {e}")
+        return None, None, None
+
+def try_cleanup_old_exe():
+    import time
+    import os
+    import sys
+    # 啟動時自我刪除 .old 檔案
+    exe_path = os.path.abspath(sys.argv[0])
+    exe_dir = os.path.dirname(exe_path)
+    for fname in os.listdir(exe_dir):
+        if fname.endswith('.old') and fname.startswith('ReversedFront'):
+            old_path = os.path.join(exe_dir, fname)
+            for _ in range(10):
+                try:
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+                    break
+                except Exception:
+                    time.sleep(0.5)
+
+try_cleanup_old_exe()
+
+def download_and_restart(filename, download_url, window):
+    import time
+    import shutil
+    base_filename = re.sub(r'_v\d+\.\d+', '', filename)
+    if not base_filename.lower().endswith('.exe'):
+        base_filename += '.exe'
+    exe_dir = os.path.dirname(sys.argv[0])
+    download_path = os.path.join(exe_dir, base_filename + '.new')
+    old_exe_path = os.path.abspath(sys.argv[0])
+    old_exe_rename = os.path.join(exe_dir, base_filename + '.old')
+    try:
+        with requests.get(download_url, stream=True, timeout=30) as dl:
+            dl.raise_for_status()
+            with open(download_path, 'wb') as f:
+                for chunk in dl.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        window.evaluate_js(f'alert("新版已下載：{base_filename}，請再次啟動！")')
+        time.sleep(1)
+        window.destroy()
+        # 先將舊 exe 改名
+        try:
+            os.rename(old_exe_path, old_exe_rename)
+        except Exception:
+            pass
+        # 將新檔案改名為正式檔名
+        try:
+            os.rename(download_path, os.path.join(exe_dir, base_filename))
+        except Exception:
+            pass
+        # 用 subprocess 啟動新 exe
+        subprocess.Popen([os.path.join(exe_dir, base_filename)])
+        sys.exit(0)
+    except Exception as e:
+        window.evaluate_js(f'alert("下載新版本失敗: {e}")')
+
+def start_main_window():
+    api = Api()
+    gpu_args = [
+        '--enable-gpu',
+        '--ignore-gpu-blacklist',
+        '--enable-webgl',
+        '--enable-accelerated-2d-canvas',
+        '--enable-features=VaapiVideoDecoder',
+        '--enable-zero-copy',
+        '--enable-native-gpu-memory-buffers',
+        '--enable-gpu-rasterization',
+        '--enable-oop-rasterization',
+        '--enable-accelerated-video-decode',
+        '--use-gl=desktop',
+        '--ignore-gpu-blocklist',
+        '--disable-software-rasterizer',
+        '--enable-features=CanvasOopRasterization'
+    ]
+    try:
+        window = webview.create_window(
+            '逆統戰：烽火',
+            index_file,
+            js_api=api,
+            width=1280,
+            height=720,
+            resizable=True,
+            fullscreen=True,
+            gui='cef',
+            chromium_args=gpu_args,
+            minimized=True
+        )
+    except Exception:
+        window = webview.create_window(
+            '逆統戰：烽火',
+            index_file,
+            js_api=api,
+            width=1280,
+            height=720,
+            resizable=True,
+            fullscreen=True
+        )
+
+    def on_loaded():
+        filename, remote_version, download_url = get_cloud_latest_info()
+        if remote_version and remote_version != LOCAL_VERSION and download_url:
+            js = f'confirm("發現新版本 v{remote_version}，是否下載？")'
+            result = window.evaluate_js(js)
+            if result:
+                download_and_restart(filename, download_url, window)
+
+    window.events.loaded += on_loaded
+    webview.start()
+
+# 只保留一個啟動點
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        os.execv(sys.executable, ['python'] + sys.argv[1:])
+    start_main_window()

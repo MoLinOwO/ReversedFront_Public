@@ -60,6 +60,59 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
     };
 }
 
+// 自動登入功能
+window.autoLogin = function(account, password) {
+    if (!location.hash.startsWith('#/users/log_in')) return;
+    let tryCount = 0;
+    let fillTimer = setInterval(function() {
+        // 若已經跳轉到 home，直接結束輪詢
+        if (location.hash.startsWith('#/home')) {
+            clearInterval(fillTimer);
+            return;
+        }
+        var loginBtn = document.querySelector('.Login_loginRow1__idwSI .Login_formBtn__L1ZuE');
+        if (loginBtn) {
+            ['mousedown','mouseup','click'].forEach(ev => {
+                loginBtn.dispatchEvent(new MouseEvent(ev, { bubbles: true }));
+            });
+        }
+        var formBox = document.querySelector('.Login_loginFormBox__LKcQJ');
+        if (formBox) {
+            var accountInput = formBox.querySelector('input[type="text"]');
+            var passwordInput = formBox.querySelector('input[type="password"]');
+            if (accountInput && passwordInput) {
+                var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                nativeSetter.call(accountInput, account);
+                nativeSetter.call(passwordInput, password);
+                ['input','change','blur'].forEach(ev => {
+                    accountInput.dispatchEvent(new Event(ev, { bubbles: true }));
+                    passwordInput.dispatchEvent(new Event(ev, { bubbles: true }));
+                });
+                clearInterval(fillTimer);
+                // 輪詢等待確定按鈕出現再點擊（模擬滑鼠點擊）
+                let submitTry = 0;
+                let submitTimer = setInterval(function() {
+                    if (location.hash.startsWith('#/home')) {
+                        clearInterval(submitTimer);
+                        return;
+                    }
+                    var submitBtn = formBox.querySelector('.Login_formBtn__L1ZuE.ClickEffect');
+                    if (submitBtn) {
+                        ['mousedown','mouseup','click'].forEach(ev => {
+                            submitBtn.dispatchEvent(new MouseEvent(ev, { bubbles: true }));
+                        });
+                        clearInterval(submitTimer);
+                    }
+                    if (++submitTry > 30) clearInterval(submitTimer);
+                }, 200);
+            }
+        }
+        if (++tryCount > 30) {
+            clearInterval(fillTimer);
+        }
+    }, 200);
+};
+
 export async function autofillActiveAccount() {
     let savedAccount = null;
     try {
@@ -90,7 +143,7 @@ export async function autofillActiveAccount() {
                     accountInput.dispatchEvent(new Event(ev, { bubbles: true }));
                     passwordInput.dispatchEvent(new Event(ev, { bubbles: true }));
                 });
-                const loginBtn = Array.from(document.querySelectorAll('div[class*="Login_formBtn"]')).find(div => {
+                const loginBtn = Array.from(document.querySelectorAll('div[class*="Login_text__SoiB+"]')).find(div => {
                     return Array.from(div.querySelectorAll('*')).some(
                         el => el.textContent && el.textContent.includes('帳號登入')
                     );
@@ -115,3 +168,57 @@ export async function autofillActiveAccount() {
         }, 800);
     }
 }
+
+// 進入 /#/users/log_in 頁面自動觸發 autoLogin
+window.addEventListener('hashchange', async function() {
+    if (location.hash.startsWith('#/users/log_in')) {
+        try {
+            const savedAccount = await api.getActiveAccount();
+            if (savedAccount && savedAccount.account && savedAccount.password) {
+                setTimeout(() => {
+                    window.autoLogin(savedAccount.account, savedAccount.password);
+                }, 300); // 延遲以確保畫面渲染完成
+            }
+        } catch(e) {}
+    }
+});
+// 若一開始就位於登入頁，也要觸發
+if (location.hash.startsWith('#/users/log_in')) {
+    (async () => {
+        try {
+            const savedAccount = await api.getActiveAccount();
+            if (savedAccount && savedAccount.account && savedAccount.password) {
+                setTimeout(() => {
+                    window.autoLogin(savedAccount.account, savedAccount.password);
+                }, 300);
+            }
+        } catch(e) {}
+    })();
+}
+
+// 監控 hash 變化，方便 SPA/React 路由偵測
+window.addEventListener('hashchange', function() {});
+
+// 輪詢 hash 變化，防止 React Router 沒有觸發 hashchange
+let lastHash = location.hash;
+let hashPollTimer = setInterval(() => {
+    if (location.hash !== lastHash) {
+        if (location.hash.startsWith('#/users/log_in')) {
+            (async () => {
+                try {
+                    const savedAccount = await api.getActiveAccount();
+                    if (savedAccount && savedAccount.account && savedAccount.password) {
+                        setTimeout(() => {
+                            window.autoLogin(savedAccount.account, savedAccount.password);
+                        }, 300);
+                    }
+                } catch(e) {}
+            })();
+        }
+        // 若已經跳轉到 home，直接結束 hash 輪詢
+        if (location.hash.startsWith('#/home')) {
+            clearInterval(hashPollTimer);
+        }
+        lastHash = location.hash;
+    }
+}, 300);
