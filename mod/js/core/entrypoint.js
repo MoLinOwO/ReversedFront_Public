@@ -21,8 +21,8 @@
         <div id="account-section"></div>
         <div id="account-status" style="margin-top:6px;font-size:0.92em;color:#7fffd4;"></div>
     </div>
-    <div id="ranking-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:12000;background:none;align-items:center;justify-content:center;pointer-events:auto;overflow:auto;">
-      <div id="ranking-panel" style="background:rgba(30,34,44,0.72);padding:32px 36px 24px 36px;border-radius:22px;min-width:0;max-width:96vw;max-height:88vh;overflow:auto;box-shadow:0 4px 32px #0008;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;backdrop-filter:blur(6px);pointer-events:auto;cursor:move;">
+    <div id="ranking-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:12000;background:none;align-items:center;justify-content:center;pointer-events:auto;overflow:hidden;">
+      <div id="ranking-panel" style="background:rgba(30,34,44,0.92);padding:3vw 2vw 2vw 2vw;border-radius:22px;min-width:320px;max-width:96vw;width:min(540px,92vw);max-height:88vh;overflow:auto;box-shadow:0 4px 32px #0008;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;backdrop-filter:blur(6px);pointer-events:auto;cursor:move;">
         <button id="close-ranking-modal" aria-label="關閉排行榜" style="position:absolute;top:14px;right:18px;background:rgba(60,60,60,0.7);color:#fff;border:none;border-radius:50%;width:36px;height:36px;font-size:1.3em;cursor:pointer;z-index:1;box-shadow:0 2px 8px #000a;">×</button>
         <div id="ranking-content" style="margin-top:8px;width:100%;max-height:70vh;overflow:auto;"></div>
       </div>

@@ -1,6 +1,5 @@
 // marker 彈窗相關
 import { getCityName, getMarkerId, getFactionByColor, getAllUniqueValues, getAllRewardCombos } from './markerUtils.js';
-import { makeDialogResponsive } from '../ui/resizewindows.js';
 
 function parseMaterialType(bracket) {
     if (!bracket) return '';
@@ -109,7 +108,6 @@ function showEditDialog(marker, markerData) {
     if (!dialog) {
         dialog = document.createElement('div');
         dialog.id = 'marker-edit-dialog';
-        dialog.classList.add('rf-dialog'); // 全域自動自適應
         dialog.tabIndex = 0;
         dialog.style.position = 'fixed';
         dialog.style.left = '50%';
@@ -117,19 +115,20 @@ function showEditDialog(marker, markerData) {
         dialog.style.transform = 'translate(-50%,-50%)';
         dialog.style.background = 'rgba(30,30,30,0.98)';
         dialog.style.color = '#fff';
+        dialog.style.width = 'min(540px, 92vw)';
+        dialog.style.maxWidth = '96vw';
+        dialog.style.minWidth = '320px';
+        dialog.style.maxHeight = '88vh';
+        dialog.style.overflow = 'auto';
         dialog.style.padding = '36px 44px 32px 44px';
         dialog.style.borderRadius = '18px';
         dialog.style.zIndex = 100000;
         dialog.style.boxShadow = '0 8px 48px #000c';
-        dialog.style.minWidth = '380px';
-        dialog.style.maxWidth = '96vw';
         dialog.style.outline = 'none';
         document.body.appendChild(dialog);
     }
     dialog.innerHTML = html;
     dialog.style.display = 'block';
-    // 新增：自動調整編輯彈窗大小，行動裝置自適應
-    makeDialogResponsive(dialog, { maxWidth: 340, maxHeight: 520, padding: 10, observeShow: false });
     dialog.focus();
     document.getElementById('close-marker-dialog').onclick = () => dialog.style.display = 'none';
     setTimeout(()=>{
@@ -271,53 +270,52 @@ function showDetailDialog(marker, markerData) {
         });
     }
     html += `<div style='display:flex;gap:18px;justify-content:center;margin-top:18px;'>`;
-    html += `<button id='close-marker-detail-dialog' style='background:#444;color:#fff;border:none;padding:12px 38px;border-radius:10px;font-size:1.18em;cursor:pointer;font-weight:bold;letter-spacing:2px;'>關閉</button>`;
+    // 不加入關閉按鈕
     html += `</div>`;
-    let detailDialog = document.getElementById('marker-detail-dialog');
-    if (!detailDialog) {
-        detailDialog = document.createElement('div');
-        detailDialog.id = 'marker-detail-dialog';
-        detailDialog.classList.add('rf-dialog'); // 全域自動自適應
-        detailDialog.tabIndex = 0;
-        detailDialog.style.position = 'fixed';
-        detailDialog.style.left = '50%';
-        detailDialog.style.top = '50%';
-        detailDialog.style.transform = 'translate(-50%,-50%)';
-        detailDialog.style.background = `${factionColor}CC`;
-        detailDialog.style.backdropFilter = 'blur(18px)';
-        detailDialog.style.webkitBackdropFilter = 'blur(18px)';
-        detailDialog.style.color = '#fff';
-        detailDialog.style.padding = '0';
-        detailDialog.style.borderRadius = '22px';
-        detailDialog.style.zIndex = 100000;
-        detailDialog.style.boxShadow = '0 8px 48px #000c';
-        detailDialog.style.minWidth = '380px';
-        detailDialog.style.maxWidth = '96vw';
-        detailDialog.style.outline = 'none';
-        document.body.appendChild(detailDialog);
+    let dialog = document.getElementById('marker-detail-dialog');
+    if (!dialog) {
+        dialog = document.createElement('div');
+        dialog.id = 'marker-detail-dialog';
+        dialog.tabIndex = 0;
+        dialog.style.position = 'fixed';
+        dialog.style.left = '50%';
+        dialog.style.top = '50%';
+        dialog.style.transform = 'translate(-50%,-50%)';
+        dialog.style.background = `${factionColor}CC`;
+        dialog.style.backdropFilter = 'blur(18px)';
+        dialog.style.webkitBackdropFilter = 'blur(18px)';
+        dialog.style.color = '#fff';
+        dialog.style.padding = '0';
+        dialog.style.borderRadius = '22px';
+        dialog.style.zIndex = 100000;
+        dialog.style.boxShadow = '0 8px 48px #000c';
+        dialog.style.width = 'min(540px, 92vw)';
+        dialog.style.maxWidth = '96vw';
+        dialog.style.minWidth = '320px';
+        dialog.style.maxHeight = '88vh';
+        dialog.style.overflow = 'auto';
+        dialog.style.outline = 'none';
+        document.body.appendChild(dialog);
     } else {
-        detailDialog.style.background = `${factionColor}CC`;
-        detailDialog.style.backdropFilter = 'blur(18px)';
-        detailDialog.style.webkitBackdropFilter = 'blur(18px)';
+        dialog.style.background = `${factionColor}CC`;
+        dialog.style.backdropFilter = 'blur(18px)';
+        dialog.style.webkitBackdropFilter = 'blur(18px)';
+        dialog.style.width = 'min(540px, 92vw)';
+        dialog.style.maxWidth = '96vw';
+        dialog.style.minWidth = '320px';
+        dialog.style.maxHeight = '88vh';
+        dialog.style.overflow = 'auto';
     }
-    detailDialog.innerHTML = html;
-    detailDialog.style.display = 'block';
-    // 新增：自動調整詳細資訊彈窗大小，行動裝置自適應
-    if (window.makeDialogResponsive) {
-        window.makeDialogResponsive(detailDialog, { maxWidth: 340, maxHeight: 520, padding: 10, observeShow: false });
-    } else {
-        import('../ui/resizewindows.js').then(mod => {
-            mod.makeDialogResponsive(detailDialog, { maxWidth: 340, maxHeight: 520, padding: 10, observeShow: false });
-        });
-    }
-    detailDialog.focus();
-    document.getElementById('close-marker-detail-dialog').onclick = () => detailDialog.style.display = 'none';
+    dialog.innerHTML = `<div style='padding:38px 38px 28px 38px;'>${html}</div>`;
+    dialog.style.display = 'block';
+    dialog.focus();
+    // 不掛 close-marker-detail-dialog 事件
     // 點擊視窗外自動關閉
     setTimeout(()=>{
         function outsideClick(e) {
-            if (detailDialog.style.display !== 'block') return;
-            if (!detailDialog.contains(e.target)) {
-                detailDialog.style.display = 'none';
+            if (dialog.style.display !== 'block') return;
+            if (!dialog.contains(e.target)) {
+                dialog.style.display = 'none';
                 document.removeEventListener('mousedown', outsideClick);
             }
         }
@@ -326,22 +324,22 @@ function showDetailDialog(marker, markerData) {
     // hash 變動自動關閉
     function hashClose() {
         if (!location.hash.startsWith('#/portalmap')) {
-            detailDialog.style.display = 'none';
+            dialog.style.display = 'none';
             window.removeEventListener('hashchange', hashClose);
         }
     }
     window.addEventListener('hashchange', hashClose);
     // 拖拉功能
     let isDragging = false, startX = 0, startY = 0, origX = 0, origY = 0;
-    detailDialog.onmousedown = function(e) {
+    dialog.onmousedown = function(e) {
         if (e.target.tagName === 'BUTTON') return;
         isDragging = true;
         startX = e.clientX;
         startY = e.clientY;
-        const rect = detailDialog.getBoundingClientRect();
+        const rect = dialog.getBoundingClientRect();
         origX = rect.left;
         origY = rect.top;
-        detailDialog.style.transition = 'none';
+        dialog.style.transition = 'none';
         document.body.style.userSelect = 'none';
     };
     window.onmousemove = function(e) {
@@ -351,7 +349,7 @@ function showDetailDialog(marker, markerData) {
         let newLeft = origX + dx;
         let newTop = origY + dy;
         // 邊界修正
-        const rect = detailDialog.getBoundingClientRect();
+        const rect = dialog.getBoundingClientRect();
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         const minX = 8, minY = 8;
@@ -361,9 +359,9 @@ function showDetailDialog(marker, markerData) {
         if (newTop < minY) newTop = minY;
         if (newLeft > maxX) newLeft = maxX;
         if (newTop > maxY) newTop = maxY;
-        detailDialog.style.left = newLeft + 'px';
-        detailDialog.style.top = newTop + 'px';
-        detailDialog.style.transform = 'none';
+        dialog.style.left = newLeft + 'px';
+        dialog.style.top = newTop + 'px';
+        dialog.style.transform = 'none';
     };
     window.onmouseup = function() {
         isDragging = false;

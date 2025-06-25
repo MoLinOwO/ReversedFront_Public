@@ -28,7 +28,6 @@ export function showExitConfirm(prompt) {
     if (document.getElementById('custom-exit-confirm')) return;
     const overlay = document.createElement('div');
     overlay.id = 'custom-exit-confirm';
-    overlay.classList.add('rf-dialog'); // 全域自動自適應
     overlay.style.position = 'fixed';
     overlay.style.left = '0';
     overlay.style.top = '0';
@@ -40,7 +39,7 @@ export function showExitConfirm(prompt) {
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
     overlay.innerHTML = `
-      <div id="custom-exit-confirm-dialog" class="rf-dialog" style="background:rgba(34,34,34,0.98);backdrop-filter:blur(6px);border-radius:14px;box-shadow:0 4px 32px #000a;padding:32px 36px 24px 36px;min-width:260px;max-width:90vw;display:flex;flex-direction:column;align-items:center;">
+      <div style="background:rgba(34,34,34,0.98);backdrop-filter:blur(6px);border-radius:14px;box-shadow:0 4px 32px #000a;padding:32px 36px 24px 36px;min-width:260px;max-width:90vw;display:flex;flex-direction:column;align-items:center;">
         <div style="font-size:1.18em;font-weight:bold;margin-bottom:18px;letter-spacing:1px;color:#fff;text-align:center;">${prompt.message}</div>
         <div style="display:flex;gap:18px;">
           <button id="exit-confirm-yes" style="min-width:90px;min-height:38px;font-size:1em;background:#d9534f;color:#fff;border:none;border-radius:8px;box-shadow:0 2px 8px #0003;cursor:pointer;transition:background 0.18s;">${prompt.confirm}</button>
@@ -53,10 +52,6 @@ export function showExitConfirm(prompt) {
       </style>
     `;
     document.body.appendChild(overlay);
-    // 新增：自動調整彈窗大小
-    import('./resizewindows.js').then(mod => {
-        mod.makeDialogResponsive('#custom-exit-confirm-dialog', { maxWidth: 340, maxHeight: 320, observeShow: false });
-    });
     document.getElementById('exit-confirm-yes').onclick = function() {
         if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
             window.pywebview.api.exit_app();

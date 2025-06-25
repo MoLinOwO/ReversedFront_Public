@@ -184,14 +184,6 @@ export function initializeMessageObserver() {
         if (lastTextContent) {
             updateDynamicStyles(lastTextContent);
         }
-        // 新增：自動調整高亮提示視窗最大寬度，行動裝置自適應
-        const highlighterElement = document.getElementById(HIGHLIGHTER_ID);
-        if (highlighterElement) {
-            const padding = 16;
-            const maxWidth = Math.min(window.innerWidth - padding * 2, 420);
-            highlighterElement.style.maxWidth = maxWidth + 'px';
-            highlighterElement.style.overflow = 'auto';
-        }
     });
 
     const observer = new MutationObserver((mutationsList) => {

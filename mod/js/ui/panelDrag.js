@@ -28,18 +28,6 @@ export function setupPanelDrag(controlsPanel, controlsToggle) {
             origY = rect.top;
             document.body.style.userSelect = 'none';
         });
-        // 新增觸控支援
-        panel.addEventListener('touchstart', function(e) {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'FORM' || e.target.isContentEditable) return;
-            isDragging = true;
-            const touch = e.touches[0];
-            startX = touch.clientX;
-            startY = touch.clientY;
-            const rect = panel.getBoundingClientRect();
-            origX = rect.left;
-            origY = rect.top;
-            document.body.style.userSelect = 'none';
-        });
         window.addEventListener('mousemove', function(e) {
             if (!isDragging) return;
             let dx = e.clientX - startX;
@@ -48,37 +36,9 @@ export function setupPanelDrag(controlsPanel, controlsToggle) {
             panel.style.top = (origY + dy) + 'px';
             panel.style.right = 'auto';
         });
-        // 新增觸控移動支援
-        window.addEventListener('touchmove', function(e) {
-            if (!isDragging) return;
-            const touch = e.touches[0];
-            let dx = touch.clientX - startX;
-            let dy = touch.clientY - startY;
-            panel.style.left = (origX + dx) + 'px';
-            panel.style.top = (origY + dy) + 'px';
-            panel.style.right = 'auto';
-        }, { passive: false });
         window.addEventListener('mouseup', function() {
             if (isDragging) {
                 // 拖拉結束時修正位置
-                const rect = panel.getBoundingClientRect();
-                const minX = 0, minY = 0;
-                const maxX = window.innerWidth - rect.width;
-                const maxY = window.innerHeight - rect.height;
-                let newLeft = rect.left, newTop = rect.top;
-                if (rect.left < minX) newLeft = minX;
-                if (rect.top < minY) newTop = minY;
-                if (rect.left > maxX) newLeft = maxX;
-                if (rect.top > maxY) newTop = maxY;
-                panel.style.left = newLeft + 'px';
-                panel.style.top = newTop + 'px';
-            }
-            isDragging = false;
-            document.body.style.userSelect = '';
-        });
-        // 新增觸控結束支援
-        window.addEventListener('touchend', function() {
-            if (isDragging) {
                 const rect = panel.getBoundingClientRect();
                 const minX = 0, minY = 0;
                 const maxX = window.innerWidth - rect.width;
@@ -112,17 +72,6 @@ export function setupPanelDrag(controlsPanel, controlsToggle) {
             origY = rect.top;
             document.body.style.userSelect = 'none';
         });
-        // 新增觸控支援
-        toggleBtn.addEventListener('touchstart', function(e) {
-            isDragging = true;
-            const touch = e.touches[0];
-            startX = touch.clientX;
-            startY = touch.clientY;
-            const rect = toggleBtn.getBoundingClientRect();
-            origX = rect.left;
-            origY = rect.top;
-            document.body.style.userSelect = 'none';
-        });
         window.addEventListener('mousemove', function(e) {
             if (!isDragging) return;
             let dx = e.clientX - startX;
@@ -134,19 +83,6 @@ export function setupPanelDrag(controlsPanel, controlsToggle) {
             panel.style.top = toggleBtn.style.top;
             panel.style.right = 'auto';
         });
-        // 新增觸控移動支援
-        window.addEventListener('touchmove', function(e) {
-            if (!isDragging) return;
-            const touch = e.touches[0];
-            let dx = touch.clientX - startX;
-            let dy = touch.clientY - startY;
-            toggleBtn.style.left = (origX + dx) + 'px';
-            toggleBtn.style.top = (origY + dy) + 'px';
-            toggleBtn.style.right = 'auto';
-            panel.style.left = toggleBtn.style.left;
-            panel.style.top = toggleBtn.style.top;
-            panel.style.right = 'auto';
-        }, { passive: false });
         window.addEventListener('mouseup', function() {
             if (isDragging) {
                 // 拖拉結束時修正位置
@@ -162,26 +98,6 @@ export function setupPanelDrag(controlsPanel, controlsToggle) {
                 toggleBtn.style.left = newLeft + 'px';
                 toggleBtn.style.top = newTop + 'px';
                 // 同步 panel 位置
-                panel.style.left = newLeft + 'px';
-                panel.style.top = newTop + 'px';
-            }
-            isDragging = false;
-            document.body.style.userSelect = '';
-        });
-        // 新增觸控結束支援
-        window.addEventListener('touchend', function() {
-            if (isDragging) {
-                const rect = toggleBtn.getBoundingClientRect();
-                const minX = 0, minY = 0;
-                const maxX = window.innerWidth - rect.width;
-                const maxY = window.innerHeight - rect.height;
-                let newLeft = rect.left, newTop = rect.top;
-                if (rect.left < minX) newLeft = minX;
-                if (rect.top < minY) newTop = minY;
-                if (rect.left > maxX) newLeft = maxX;
-                if (rect.top > maxY) newTop = maxY;
-                toggleBtn.style.left = newLeft + 'px';
-                toggleBtn.style.top = newTop + 'px';
                 panel.style.left = newLeft + 'px';
                 panel.style.top = newTop + 'px';
             }

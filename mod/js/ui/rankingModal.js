@@ -42,27 +42,18 @@ export async function updateRanking() {
             </div>`;
         });
         html += '</div>';
-        const rankingContent = document.getElementById('ranking-content');
-        if (rankingContent) rankingContent.innerHTML = html;
+        document.getElementById('ranking-content').innerHTML = html;
     } catch(e) {
-        const rankingContent = document.getElementById('ranking-content');
-        if (rankingContent) rankingContent.innerHTML = '排行榜載入失敗：' + e;
+        document.getElementById('ranking-content').innerHTML = '排行榜載入失敗：' + e;
     }
 }
 
 export function setupRankingModalEvents() {
     let rankingUpdateTimer = null;
     let lastRankingHash = '';
-    const showBtn = document.getElementById('show-portalmap-ranking');
-    const modal = document.getElementById('ranking-modal');
-    if (modal) {
-        modal.classList.add('rf-dialog'); // 確保全域自適應
-    }
-    const closeBtn = document.getElementById('close-ranking-modal');
-    if (!showBtn || !modal || !closeBtn) return;
-    showBtn.onclick = async function() {
+    document.getElementById('show-portalmap-ranking').onclick = async function() {
         location.hash = '#/portalmap';
-        modal.style.display = 'flex';
+        document.getElementById('ranking-modal').style.display = 'flex';
         lastRankingHash = location.hash;
         await updateRanking();
         if(rankingUpdateTimer) clearInterval(rankingUpdateTimer);
@@ -72,12 +63,12 @@ export function setupRankingModalEvents() {
             }
         }, 2000);
     };
-    closeBtn.onclick = function() {
-        modal.style.display = 'none';
+    document.getElementById('close-ranking-modal').onclick = function() {
+        document.getElementById('ranking-modal').style.display = 'none';
         if(rankingUpdateTimer) clearInterval(rankingUpdateTimer);
     };
     window.addEventListener('hashchange', function() {
-        if(modal.style.display === 'flex') {
+        if(document.getElementById('ranking-modal').style.display === 'flex') {
             if(location.hash === '#/portalmap') {
                 updateRanking();
                 if(rankingUpdateTimer) clearInterval(rankingUpdateTimer);
