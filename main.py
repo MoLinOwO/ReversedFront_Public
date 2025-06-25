@@ -1,11 +1,10 @@
 import os
-
 import sys
 import shutil
 import requests
 import re
-from bs4 import BeautifulSoup
 import subprocess
+from typing import Any, Dict, Optional
 
 # 本地版本號
 LOCAL_VERSION = "1.5"
@@ -36,42 +35,40 @@ save_exe_path_to_config()
 ACCOUNT_FILE = get_account_file()
 
 class Api:
-    def get_accounts(self):
+    def get_accounts(self) -> list:
         return get_accounts()
-    def add_account(self, data):
+    def add_account(self, data: dict) -> Any:
         return add_account(data)
-    def delete_account(self, idx):
+    def delete_account(self, idx: int) -> Any:
         return delete_account(idx)
-    def set_active_account(self, idx):
+    def set_active_account(self, idx: int) -> Any:
         return set_active_account(idx)
-    def get_active_account(self):
+    def get_active_account(self) -> Any:
         return get_active_account()
-    def toggle_fullscreen(self):
+    def toggle_fullscreen(self) -> None:
         window = webview.windows[0]
         window.toggle_fullscreen()
-    def save_yaml(self, filename, content):
+    def save_yaml(self, filename: str, content: Any) -> Any:
         return save_yaml(filename, content)
-    def load_yaml(self, filename):
+    def load_yaml(self, filename: str) -> Any:
         return load_yaml(filename)
-    def exit_app(self):
+    def exit_app(self) -> None:
         import threading
         def _close():
             webview.windows[0].destroy()
         threading.Thread(target=_close).start()
-    def save_config_volume(self, data):
+    def save_config_volume(self, data: Dict[str, Any]) -> Any:
         import json
         import traceback
         config_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'config.json'))
-        
         config = {}
-        # --- 讀取現有設定 ---
+        # 讀取現有設定
         if os.path.exists(config_path):
             try:
                 with open(config_path, 'r', encoding='utf-8') as f:
                     config = json.load(f)
             except json.JSONDecodeError as e:
                 print(f'[警告] config.json 格式錯誤: {e}. 將重建設定檔。')
-                # 格式錯誤，則建立新的 config 物件，但重新填入關鍵資訊
                 config = {}
                 try:
                     exe_path = os.path.abspath(sys.argv[0])
@@ -82,16 +79,14 @@ class Api:
                     print('[資訊] 已在重建的 config 中重新加入 exe_path 與 account_file。')
                 except Exception as e_inner:
                     print(f'[錯誤] 重建關鍵資訊時發生錯誤: {e_inner}')
-
-        # --- 合併傳入的音量變更 ---
+        # 合併傳入的音量變更
         if 'bgm' in data:
             config['bgm_volume'] = data['bgm']
         if 'se' in data:
             config['se_volume'] = data['se']
         if 'se147Muted' in data:
             config['se147_muted'] = data['se147Muted']
-
-        # --- 寫回檔案 ---
+        # 寫回檔案
         try:
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
@@ -101,7 +96,7 @@ class Api:
             print(f'[錯誤] 寫入 config.json 失敗: {e}')
             print(traceback.format_exc())
             return {'error': str(e)}
-    def get_config_volume(self):
+    def get_config_volume(self) -> Dict[str, Any]:
         import json
         config_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'config.json'))
         if os.path.exists(config_path):
@@ -115,7 +110,7 @@ class Api:
             }
         else:
             return {'bgm': 1.0, 'se': 1.0, 'se147Muted': False}
-    def auto_login(self, account, password):
+    def auto_login(self, account: str, password: str) -> Any:
         js_code = f'window.autoLogin({repr(account)}, {repr(password)});'
         window = webview.windows[0]
         return window.evaluate_js(js_code)
@@ -126,16 +121,14 @@ index_file = os.path.join(static_dir, 'index.html')
 if not os.path.exists(index_file):
     raise FileNotFoundError('找不到 index.html，請確認檔案存在於同一資料夾')
 
-def get_version_from_filename(filename):
+def get_version_from_filename(filename: str) -> Optional[str]:
     match = VERSION_PATTERN.search(filename)
     if match:
         return match.group(1)
     return None
 
-def try_cleanup_old_exe():
+def try_cleanup_old_exe() -> None:
     import time
-    import os
-    import sys
     # 啟動時自我刪除 .old 檔案
     exe_path = os.path.abspath(sys.argv[0])
     exe_dir = os.path.dirname(exe_path)
@@ -152,9 +145,8 @@ def try_cleanup_old_exe():
 
 try_cleanup_old_exe()
 
-def download_and_restart(filename, download_url, window):
+def download_and_restart(filename: str, download_url: str, window: Any) -> None:
     import time
-    import shutil
     base_filename = re.sub(r'_v\d+\.\d+', '', filename)
     if not base_filename.lower().endswith('.exe'):
         base_filename += '.exe'
@@ -188,7 +180,7 @@ def download_and_restart(filename, download_url, window):
     except Exception as e:
         window.evaluate_js(f'alert("下載新版本失敗: {e}")')
 
-def start_main_window():
+def start_main_window() -> None:
     api = Api()
     gpu_args = [
         '--enable-gpu',
@@ -239,8 +231,7 @@ def start_main_window():
                 download_and_restart(filename, download_url, window)
 
     window.events.loaded += on_loaded
-    webview.start()
+    webview.start(debug=True)
 
-# 只保留一個啟動點
 if __name__ == "__main__":
     start_main_window()

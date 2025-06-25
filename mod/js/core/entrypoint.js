@@ -59,13 +59,13 @@
     scaleCustomControls();
 })();
 
-import './globalAudioControl.js';
-import { renderAccountManager, autofillActiveAccount } from './accountManager.js';
-import { updateRanking, setupRankingModalEvents } from './rankingModal.js';
-import { setupCustomControls, setupRankingPanelDrag } from './customControls.js';
-import { setupMarkerInteractionOptimized } from './markerInteraction.js';
-import { initializeMessageObserver } from './notificationBox.js';
-import { saveMarkerDataToYaml } from './markerData.js';
+import '../audio/globalAudioControl.js';
+import { renderAccountManager, autofillActiveAccount } from '../account/accountManager.js';
+import { updateRanking, setupRankingModalEvents } from '../ui/rankingModal.js';
+import { setupCustomControls, setupRankingPanelDrag } from '../ui/customControls.js';
+import { setupMarkerInteractionOptimized } from '../map/markerInteraction.js';
+import { initializeMessageObserver } from '../ui/notificationBox.js';
+import { saveMarkerDataToYaml } from '../map/markerData.js';
 
 // GPU 驗證：啟動時印出 WebGL 渲染器資訊
 console.log((() => {

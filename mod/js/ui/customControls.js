@@ -1,7 +1,7 @@
 import { setupPanelDrag } from './panelDrag.js';
 import { loadExitPromptsAndShow } from './exitConfirm.js';
-import { setupFactionMapControl } from './factionMapControl.js';
-import { setupAudioControls } from './audioControls.js';
+import { setupFactionMapControl } from '../map/factionMapControl.js';
+import { setupAudioControls } from '../audio/audioControls.js';
 import { setupRankingPanelDrag } from './rankingPanelDrag.js';
 
 function getDomOrWarn(id, warnMsg) {

@@ -1,5 +1,5 @@
 // mod/js/notificationBox.js
-import { getFactionColor, getAllFactions } from './factionColorMap.js';
+import { getFactionColor, getAllFactions } from '../map/factionColorMap.js';
 
 const HIGHLIGHTER_ID = 'rf-custom-highlighter';
 let fadeOutTimer = null; // Timer for the fade-out effect

@@ -1,5 +1,5 @@
-import * as api from './api.js';
-import { $ } from './utils.js';
+import * as api from '../core/api.js';
+import { $ } from '../core/utils.js';
 
 // 帳號管理模組
 export async function renderAccountManager(accountSection, autofillActiveAccount) {
