@@ -42,7 +42,7 @@ function createFactionFilterDropdown(controlsPanel) {
     container.appendChild(select);
     controlsPanel.appendChild(container);
 
-    // 初始化選項，確保同步 config.json
+    // 初始化選項，支援 pywebview 及網頁版
     function syncFactionFilterFromConfig() {
         if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
             window.pywebview.api.get_report_faction_filter().then(val => {
@@ -53,9 +53,12 @@ function createFactionFilterDropdown(controlsPanel) {
                 }
                 if (window.updateFactionFilter) window.updateFactionFilter(select.value);
             });
+        } else {
+            // 網頁版：預設為全部
+            select.value = '全部';
+            if (window.updateFactionFilter) window.updateFactionFilter('全部');
         }
     }
-    // 支援 pywebviewready 及 DOMContentLoaded 事件同步
     window.addEventListener('pywebviewready', syncFactionFilterFromConfig);
     document.addEventListener('DOMContentLoaded', syncFactionFilterFromConfig);
 
