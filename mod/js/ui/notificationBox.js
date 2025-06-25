@@ -6,6 +6,8 @@ let fadeOutTimer = null; // Timer for the fade-out effect
 let lastTextContent = null; // Cache the last text to avoid redundant updates
 let isInitialized = false; // Guard against re-initialization
 
+let currentFactionFilter = '全部';
+
 /**
  * Creates and injects the dedicated highlighter element and a style tag.
  * This runs only once and sets up all static styles for performance.
@@ -129,6 +131,8 @@ function updateDynamicStyles(text) {
  * @param {string} text - The message text to display.
  */
 function showHighlighter(text) {
+    if (!passesFactionFilter(text)) return;
+
     const highlighterElement = document.getElementById(HIGHLIGHTER_ID);
     if (!highlighterElement) return;
 
@@ -153,6 +157,24 @@ function showHighlighter(text) {
         highlighterElement.style.opacity = '0';
         lastTextContent = null; // Clear cache when faded out
     }, FADE_OUT_DELAY);
+}
+
+window.updateFactionFilter = function(val) {
+    currentFactionFilter = val;
+};
+
+function getFactionFromText(text) {
+    const factions = getAllFactions();
+    for (const faction of factions) {
+        if (text.includes(faction.name)) return faction.name;
+    }
+    return null;
+}
+
+function passesFactionFilter(text) {
+    if (currentFactionFilter === '全部') return true;
+    const faction = getFactionFromText(text);
+    return faction === currentFactionFilter;
 }
 
 export function initializeMessageObserver() {
@@ -214,4 +236,11 @@ export function initializeMessageObserver() {
         subtree: true,
         characterData: true,
     });
+
+    // 初始化過濾條件
+    if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
+        window.pywebview.api.get_report_faction_filter().then(val => {
+            currentFactionFilter = val || '全部';
+        });
+    }
 }

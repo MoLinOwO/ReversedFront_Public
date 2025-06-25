@@ -58,39 +58,15 @@ class Api:
             webview.windows[0].destroy()
         threading.Thread(target=_close).start()
     def save_config_volume(self, data: Dict[str, Any]) -> Any:
-        import json
         import traceback
-        config_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'config.json'))
-        config = {}
-        # 讀取現有設定
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-            except json.JSONDecodeError as e:
-                print(f'[警告] config.json 格式錯誤: {e}. 將重建設定檔。')
-                config = {}
-                try:
-                    exe_path = os.path.abspath(sys.argv[0])
-                    base_path = os.path.abspath(os.path.dirname(sys.argv[0]))
-                    account_file = os.path.normpath(os.path.join(base_path, 'account_list.json'))
-                    config['exe_path'] = exe_path
-                    config['account_file'] = account_file
-                    print('[資訊] 已在重建的 config 中重新加入 exe_path 與 account_file。')
-                except Exception as e_inner:
-                    print(f'[錯誤] 重建關鍵資訊時發生錯誤: {e_inner}')
-        # 合併傳入的音量變更
-        if 'bgm' in data:
-            config['bgm_volume'] = data['bgm']
-        if 'se' in data:
-            config['se_volume'] = data['se']
-        if 'se147Muted' in data:
-            config['se147_muted'] = data['se147Muted']
-        # 寫回檔案
+        from mod.py.config_utils import update_config_fields
         try:
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
-            print(f'[音量設定] 寫入成功: {config_path}')
+            update_config_fields({
+                'bgm_volume': data.get('bgm'),
+                'se_volume': data.get('se'),
+                'se147_muted': data.get('se147Muted')
+            })
+            print(f'[音量設定] 寫入成功')
             return True
         except Exception as e:
             print(f'[錯誤] 寫入 config.json 失敗: {e}')
@@ -114,6 +90,27 @@ class Api:
         js_code = f'window.autoLogin({repr(account)}, {repr(password)});'
         window = webview.windows[0]
         return window.evaluate_js(js_code)
+    def save_report_faction_filter(self, faction: str) -> bool:
+        from mod.py.config_utils import update_config_fields
+        try:
+            update_config_fields({'report_faction_filter': faction})
+            print(f'[戰報過濾] 寫入成功: {faction}')
+            return True
+        except Exception as e:
+            print(f'[錯誤] 寫入 report_faction_filter 失敗: {e}')
+            return False
+
+    def get_report_faction_filter(self) -> str:
+        import json
+        config_path = os.path.abspath(os.path.join(os.path.dirname(sys.argv[0]), 'config.json'))
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                return config.get('report_faction_filter', '全部')
+            except Exception:
+                return '全部'
+        return '全部'
 
 # 設定靜態檔案資料夾
 static_dir = os.path.abspath(os.path.dirname(__file__))
@@ -231,7 +228,7 @@ def start_main_window() -> None:
                 download_and_restart(filename, download_url, window)
 
     window.events.loaded += on_loaded
-    webview.start(debug=True)
+    webview.start()
 
 if __name__ == "__main__":
     start_main_window()
