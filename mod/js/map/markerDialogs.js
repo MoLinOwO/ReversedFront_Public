@@ -115,12 +115,13 @@ function showEditDialog(marker, markerData) {
         dialog.style.transform = 'translate(-50%,-50%)';
         dialog.style.background = 'rgba(30,30,30,0.98)';
         dialog.style.color = '#fff';
-        dialog.style.width = 'min(540px, 92vw)';
-        dialog.style.maxWidth = '96vw';
-        dialog.style.minWidth = '320px';
+        // 編輯據點彈窗自適應橫向螢幕（更窄，65vw）
+        dialog.style.width = 'min(420px, 65vw)';
+        dialog.style.maxWidth = '65vw';
+        dialog.style.minWidth = '220px';
         dialog.style.maxHeight = '88vh';
         dialog.style.overflow = 'auto';
-        dialog.style.padding = '36px 44px 32px 44px';
+        dialog.style.padding = '32px 20px 20px 20px';
         dialog.style.borderRadius = '18px';
         dialog.style.zIndex = 100000;
         dialog.style.boxShadow = '0 8px 48px #000c';
@@ -289,9 +290,10 @@ function showDetailDialog(marker, markerData) {
         dialog.style.borderRadius = '22px';
         dialog.style.zIndex = 100000;
         dialog.style.boxShadow = '0 8px 48px #000c';
-        dialog.style.width = 'min(540px, 92vw)';
-        dialog.style.maxWidth = '96vw';
-        dialog.style.minWidth = '320px';
+        // 詳細資訊彈窗自適應橫向螢幕（更窄，65vw）
+        dialog.style.width = 'min(420px, 65vw)';
+        dialog.style.maxWidth = '65vw';
+        dialog.style.minWidth = '220px';
         dialog.style.maxHeight = '88vh';
         dialog.style.overflow = 'auto';
         dialog.style.outline = 'none';
@@ -300,13 +302,13 @@ function showDetailDialog(marker, markerData) {
         dialog.style.background = `${factionColor}CC`;
         dialog.style.backdropFilter = 'blur(18px)';
         dialog.style.webkitBackdropFilter = 'blur(18px)';
-        dialog.style.width = 'min(540px, 92vw)';
-        dialog.style.maxWidth = '96vw';
-        dialog.style.minWidth = '320px';
+        dialog.style.width = 'min(420px, 65vw)';
+        dialog.style.maxWidth = '65vw';
+        dialog.style.minWidth = '220px';
         dialog.style.maxHeight = '88vh';
         dialog.style.overflow = 'auto';
     }
-    dialog.innerHTML = `<div style='padding:38px 38px 28px 38px;'>${html}</div>`;
+    dialog.innerHTML = `<div style='padding:20px 16px 14px 16px;'>${html}</div>`;
     dialog.style.display = 'block';
     dialog.focus();
     // 不掛 close-marker-detail-dialog 事件
