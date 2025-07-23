@@ -7,7 +7,7 @@ import subprocess
 from typing import Any, Dict, Optional
 
 # 本地版本號
-LOCAL_VERSION = "1.7"
+LOCAL_VERSION = "1.8"
 # 雲端分享頁面
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 # 解析版本號用正則
