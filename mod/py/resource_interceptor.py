@@ -32,13 +32,8 @@ def inject_resource_interceptor():
     
     # 添加調試模式標誌和版本號到前端全局變數 (在攔截器之前)
     try:
-        # 嘗試獲取已加載的 LOCAL_VERSION
-        import sys
-        if 'main' in sys.modules:
-            LOCAL_VERSION = sys.modules['main'].LOCAL_VERSION
-        else:
-            # 提供預設值
-            LOCAL_VERSION = "2.0"
+        # 直接指定版本號，避免模塊導入
+        LOCAL_VERSION = "2.0"
             
         # 設置調試模式為 False 以禁用大量的控制台輸出
         window.evaluate_js("""

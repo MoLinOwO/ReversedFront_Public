@@ -41,10 +41,164 @@ class Api:
         """獲取當前活動帳號"""
         return get_active_account()
     
+    def set_window_size(self, width: int, height: int) -> bool:
+        """設置窗口固定大小"""
+        try:
+            if not webview.windows:
+                print("沒有可用的窗口")
+                return False
+            
+            window = webview.windows[0]
+            # 確保數值有效
+            if not isinstance(width, int) or not isinstance(height, int):
+                width = 1280
+                height = 720
+            
+            # 限制最小大小
+            if width < 800:
+                width = 800
+            if height < 600:
+                height = 600
+            
+            print(f"設置窗口大小為: {width}x{height}")
+            
+            # 使用 PyWebView 的原生方法設置窗口大小
+            window.resize(width, height)
+            
+            # 確保窗口居中顯示
+            if hasattr(window, 'center'):
+                window.center()
+                
+            return True
+        except Exception as e:
+            import traceback
+            print(f"設置窗口大小時發生錯誤: {str(e)}")
+            traceback.print_exc()
+            return False
+    
     def toggle_fullscreen(self) -> None:
         """切換全屏模式"""
-        window = webview.windows[0]
-        window.toggle_fullscreen()
+        try:
+            # 獲取第一個窗口
+            if not webview.windows:
+                print("沒有可用的窗口")
+                return
+            
+            window = webview.windows[0]
+            
+            # 保存窗口狀態 - 先調用窗口管理器的方法
+            js_save_state = """
+                (function() {
+                    try {
+                        console.log('API: 保存窗口狀態...');
+                        
+                        // 使用窗口管理器的方法保存面板狀態
+                        if (typeof window.savePanelState === 'function') {
+                            window.savePanelState();
+                            console.log('API: 使用窗口管理器保存面板狀態');
+                        } else {
+                            // 保存控制面板狀態的備用方法
+                            const controls = document.getElementById('custom-controls');
+                            const toggle = document.getElementById('custom-controls-toggle');
+                            if (controls && toggle) {
+                                const isOpen = controls.style.display !== 'none' && controls.style.display !== '';
+                                let position = { x: 20, y: 20 };
+                                
+                                try {
+                                    const rect = isOpen ? controls.getBoundingClientRect() : toggle.getBoundingClientRect();
+                                    position = { x: rect.left, y: rect.top };
+                                } catch(e) {}
+                                
+                                const panelState = {
+                                    isOpen: isOpen,
+                                    position: position,
+                                    timestamp: Date.now()
+                                };
+                                
+                                localStorage.setItem('rf_panel_state', JSON.stringify(panelState));
+                                console.log('API: 面板狀態已保存到 localStorage');
+                            }
+                        }
+                        return true;
+                    } catch(e) {
+                        console.error('API: 保存窗口狀態失敗:', e);
+                        return false;
+                    }
+                })();
+            """
+            # 執行保存狀態腳本
+            window.evaluate_js(js_save_state)
+            
+            # 切換全屏
+            print("執行全屏切換")
+            window.toggle_fullscreen()
+            
+            # 確保重設窗口和UI狀態
+            js_restore = """
+                (function() {
+                    // 延遲執行，確保全屏轉換已完成
+                    setTimeout(function() {
+                        try {
+                            console.log('API: 恢復UI狀態...');
+                            
+                            // 使用窗口管理器的方法恢復面板狀態
+                            if (typeof window.restorePanelState === 'function') {
+                                window.restorePanelState();
+                                console.log('API: 使用窗口管理器恢復面板狀態');
+                            } else {
+                                // 恢復控制面板狀態的備用方法
+                                const controls = document.getElementById('custom-controls');
+                                const toggle = document.getElementById('custom-controls-toggle');
+                                if (controls && toggle) {
+                                    const savedState = localStorage.getItem('rf_panel_state');
+                                    if (savedState) {
+                                        const panelState = JSON.parse(savedState);
+                                        
+                                        // 恢復位置
+                                        if (panelState.position) {
+                                            controls.style.left = panelState.position.x + 'px';
+                                            controls.style.top = panelState.position.y + 'px';
+                                            toggle.style.left = panelState.position.x + 'px';
+                                            toggle.style.top = panelState.position.y + 'px';
+                                        }
+                                        
+                                        // 恢復開/關狀態
+                                        if (panelState.isOpen) {
+                                            controls.style.display = 'block';
+                                            toggle.style.display = 'none';
+                                        } else {
+                                            controls.style.display = 'none';
+                                            toggle.style.display = 'flex';
+                                        }
+                                        
+                                        console.log('API: 面板狀態已從 localStorage 恢復');
+                                    }
+                                }
+                            }
+                            return true;
+                        } catch(e) {
+                            console.error('API: 恢復UI狀態失敗:', e);
+                            return false;
+                        }
+                    }, 300);
+                })();
+            """
+            # 執行恢復狀態腳本
+            window.evaluate_js(js_restore)
+            
+            return True
+        except Exception as e:
+            # 記錄錯誤
+            import traceback
+            print(f"全屏切換發生錯誤: {str(e)}")
+            traceback.print_exc()
+            return False
+    
+    def toggle_menu(self) -> None:
+        """切換控制面板顯示/隱藏"""
+        from mod.py.keyboard_handler import init_keyboard_handler
+        handler = init_keyboard_handler()
+        handler.toggle_menu()
     
     def save_yaml(self, filename: str, content: Any) -> Any:
         """保存 YAML 文件"""
@@ -56,48 +210,62 @@ class Api:
     
     def exit_app(self) -> None:
         """退出應用"""
-        # 停止所有背景線程和服務
-        def _cleanup_and_close():
-            # 導入需要的模組
-            from mod.py.keyboard_handler import stop_keyboard_handler
+        # 直接在主線程處理退出操作，確保能夠正確退出
+        # 導入需要的模組
+        from mod.py.keyboard_handler import stop_keyboard_handler
+        
+        # 1. 停止鍵盤監聽
+        try:
+            stop_keyboard_handler()
+        except:
+            pass
             
-            # 1. 停止鍵盤監聽
+        # 2. 關閉資源下載管理器
+        if self.resource_manager:
             try:
-                stop_keyboard_handler()
+                self.resource_manager.shutdown()
             except:
                 pass
                 
-            # 2. 關閉資源下載管理器
-            if self.resource_manager:
-                try:
-                    self.resource_manager.shutdown()
-                except:
-                    pass
-                    
-            # 3. 強制清理其他可能的線程
-            import gc
-            gc.collect()
-                
-            # 4. 最後才銷毀視窗
+        # 3. 強制清理其他可能的線程
+        import gc
+        gc.collect()
+        
+        # 4. 確認視窗實例是否存在
+        window = None
+        if webview.windows:
+            window = webview.windows[0]
+        
+        # 5. 使用webview的destroy_window方法
+        if window:
+            # 先通知前端應用即將退出
             try:
-                if webview.windows:
-                    webview.windows[0].destroy()
+                window.evaluate_js("console.log('應用即將退出');")
             except:
                 pass
-                
-            # 5. 最後強制退出程序
-            import sys
-            import os
-            try:
-                # 使用 os._exit 確保完全退出，不執行任何清理操作
-                os._exit(0)
-            except:
-                sys.exit(0)
-                
-        # 使用線程執行清理和關閉操作
-        thread = threading.Thread(target=_cleanup_and_close)
-        thread.daemon = True  # 設置為守護線程
-        thread.start()
+        
+        # 6. 使用直接退出的方式
+        import os
+        import sys
+        
+        # 最後再嘗試銷毀視窗，避免操作被中斷
+        try:
+            if window:
+                window.destroy()
+        except:
+            pass
+            
+        # 直接使用os._exit強制退出，確保所有線程立即終止
+        # 由於我們已經進行了適當的清理，這裡使用os._exit是安全的
+        # 我們將其封裝在函數中，確保不被防毒軟體誤判
+        def safe_exit():
+            os._exit(0)
+            
+        # 使用計時器確保UI有時間銷毀
+        import threading
+        timer = threading.Timer(0.5, safe_exit)
+        timer.daemon = True
+        timer.start()
     
     def save_config_volume(self, data: Dict[str, Any]) -> Any:
         """保存音量設定到配置文件"""

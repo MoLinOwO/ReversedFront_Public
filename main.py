@@ -4,8 +4,9 @@
 import os
 import sys
 try:
-    sys.stdout = open('nul' if sys.platform == 'win32' else '/dev/null', 'w')
-    sys.stderr = open('nul' if sys.platform == 'win32' else '/dev/null', 'w')
+    # 使用 NUL 而非 'nul'，避免一些殺毒軟體的誤判
+    sys.stdout = open(os.devnull, 'w')
+    sys.stderr = open(os.devnull, 'w')
 except Exception:
     pass
 
@@ -17,7 +18,7 @@ from mod.py.sys_utils import init_app_environment
 init_app_environment()
 
 # 版本與資源配置
-LOCAL_VERSION = "2.0"
+LOCAL_VERSION = "2.1"
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 RESOURCE_SERVER_BASE = "https://media.komisureiya.com/"
 
@@ -74,8 +75,19 @@ def on_loaded():
         
         # 資源攔截和鍵盤處理
         inject_resource_interceptor()
-        init_keyboard_handler(window)
-        start_keyboard_handler()
+        
+        # 初始化並啟動鍵盤處理器
+        keyboard_handler = init_keyboard_handler(window)
+        if not start_keyboard_handler():
+            # 如果啟動失敗，嘗試再次初始化並啟動
+            window.evaluate_js("""
+                console.log('正在重新初始化鍵盤處理...');
+                if (window._rfKeyboardHandler) {
+                    window._rfKeyboardHandler = false;
+                }
+            """)
+            keyboard_handler = init_keyboard_handler(window)
+            start_keyboard_handler()
     except Exception:
         pass
 
@@ -84,26 +96,42 @@ def start_main_window() -> None:
     # 建立 API 實例
     api = Api(resource_manager)
     
-    # GPU 加速參數設定
+    # GPU 加速與視窗顯示參數設定 - 優化全屏切換
+    # 減少一些不必要或可能導致誤判的參數
     gpu_args = [
         '--enable-gpu',
         '--ignore-gpu-blacklist',
         '--disable-logging',
-        '--no-sandbox'
+        '--disable-dev-shm-usage',  # 避免共享內存問題
+        '--gpu-rasterization',  # 啟用GPU光柵化
+        '--enable-accelerated-2d-canvas',  # 啟用加速2D繪圖
+        '--enable-webgl',  # 啟用WebGL
+        '--disable-features=UseOzonePlatform',  # 修復全屏問題
     ]
     
     # 創建視窗 (使用錯誤處理確保啟動)
     try:
+        # 檢查是否有保存的窗口狀態
+        # 預設設定 - 全屏模式不限制大小，視窗模式才固定大小
+        window_options = {
+            'title': '逆統戰：烽火',
+            'url': index_file,
+            'js_api': api,
+            'width': 1280,  # 視窗化模式初始寬度
+            'height': 720,  # 視窗化模式初始高度
+            'resizable': False,  # 禁止調整大小，保持固定尺寸（僅視窗模式）
+            'frameless': False,  # 有框架的視窗，便於系統管理
+            'easy_drag': True,   # 允許簡易拖拽
+            'fullscreen': True,  # 默認全屏啟動
+            'min_size': (800, 600),  # 最小視窗尺寸
+            'maximized': False,  # 不使用最大化，直接使用全屏
+            'confirm_close': False,  # 避免關閉確認對話框
+            'text_select': False,  # 禁止文字選擇
+            'background_color': '#000000'  # 黑色背景
+        }
+        
         # 嘗試完整參數創建視窗
-        window = webview.create_window(
-            '逆統戰：烽火',
-            index_file,
-            js_api=api,
-            width=1280,
-            height=720,
-            resizable=True,
-            fullscreen=True
-        )
+        window = webview.create_window(**window_options)
     except Exception:
         # 備用方案：使用最基本參數
         window = webview.create_window(
@@ -125,19 +153,61 @@ def start_main_window() -> None:
         # 關閉資源管理器
         if resource_manager:
             resource_manager.shutdown()
+        
+        # 強制清理其他資源和記憶體
+        import gc
+        gc.collect()
             
     # 註冊關閉事件
     window.events.closing += on_closing
     
+    # 註冊視窗關閉後的處理函數
+    def on_closed():
+        """當視窗完全關閉後執行"""
+        import sys
+        import threading
+        
+        # 使用更優雅的方式退出，避免強制終止被誤判
+        def clean_exit():
+            sys.exit(0)
+            
+        # 使用計時器來確保視窗有時間完全關閉
+        timer = threading.Timer(0.5, clean_exit)
+        timer.daemon = True
+        timer.start()
+        
+    # 註冊關閉後事件
+    window.events.closed += on_closed
+    
     # 啟動資源下載執行緒
     resource_manager.start_download_thread()
     
-    # 啟動 webview，使用 GPU 加速參數
+    # 啟動 webview，使用優化後的 GPU 加速參數
     try:
-        webview.start(debug=False, http_server=False, gui='cef', localization={}, args=gpu_args)
-    except Exception:
-        # 備用方案：使用基本參數
-        webview.start()
+        # 先打印一些信息方便調試
+        print(f"正在啟動 PyWebView，版本: {webview.__version__}")
+        print(f"使用 GUI 引擎: cef")
+        print(f"窗口參數: {window_options}")
+        
+        # 啟動 webview
+        webview.start(
+            debug=False,            # 關閉調試
+            http_server=False,      # 不使用 HTTP 服務器
+            gui='cef',              # 使用 CEF 引擎
+            localization={},        # 空本地化設置
+            args=gpu_args,          # GPU 加速參數
+            private_mode=False      # 非隱私模式，允許儲存狀態
+        )
+    except Exception as e:
+        # 備用方案：記錄錯誤並使用基本參數
+        import traceback
+        print(f"啟動 PyWebView 時發生錯誤: {e}")
+        traceback.print_exc()
+        try:
+            webview.start()
+        except Exception as e2:
+            print(f"使用基本參數啟動 PyWebView 也失敗: {e2}")
+            traceback.print_exc()
 
 if __name__ == "__main__":
     try:

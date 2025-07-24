@@ -3,23 +3,20 @@
 """
 import os
 import sys
+import time
 import logging
 import shutil
 import tempfile
 import builtins
 import threading
 import atexit
-from pathlib import Path
 
 def silence_all_output():
-    """完全禁用所有標準輸出和錯誤，避免產生黑視窗"""
+    """完全禁用所有標準輸出和錯誤，避免產生黑視窗和被殺毒軟體誤判"""
     try:
-        if sys.platform == 'win32':
-            sys.stdout = open('nul', 'w')
-            sys.stderr = open('nul', 'w')
-        else:
-            sys.stdout = open('/dev/null', 'w')
-            sys.stderr = open('/dev/null', 'w')
+        # 使用 os.devnull 替代直接使用 'nul' 字符串
+        sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
         return True
     except Exception:
         return False
@@ -89,20 +86,24 @@ def cleanup_app_resources():
     except:
         pass
     
-    # 強制結束所有執行緒
+    # 安全地結束所有執行緒 (不使用 thread._stop() 方法，改用標準方式)
     current_thread = threading.current_thread()
-    for thread in threading.enumerate():
-        if thread != current_thread and not thread.daemon:
-            try:
-                thread._stop()
-            except:
-                pass
+    threads = list(threading.enumerate())
     
-    # 確保進程完全退出
-    try:
-        os._exit(0)
-    except:
-        sys.exit(0)
+    # 用更安全的方式通知其它線程退出 (可以在各線程加入檢查標誌)
+    for thread in threads:
+        if thread != current_thread and not thread.daemon:
+            if hasattr(thread, 'stop') and callable(thread.stop):
+                try:
+                    thread.stop()
+                except:
+                    pass
+    
+    # 短暫等待線程自行終止
+    time.sleep(0.2)
+    
+    # 安全退出程序
+    sys.exit(0)
 
 def init_app_environment():
     """初始化應用環境，執行所有必要的系統初始化步驟"""

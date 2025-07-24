@@ -92,9 +92,17 @@
    ```sh
    pip install nuitka
    ```
-2. 打包指令：
+
+2. 使用自動打包腳本（推薦）：
+   ```
+   build.bat
+   ```
+   - 這個腳本會自動檢查環境、安裝依賴並使用最佳參數進行打包
+   - 打包完成的執行檔位於 `dist/ReversedFront.exe`
+
+3. 也可使用原始打包指令（手動方式）：
    ```powershell
-      nuitka --onefile --windows-icon-from-ico=logo.ico --output-dir=dist --output-filename=ReversedFront.exe --assume-yes-for-downloads --windows-console-mode=disable \
+      nuitka --onefile --windows-icon-from-ico=logo.ico --output-dir=dist --output-filename=ReversedFront.exe --assume-yes-for-downloads --disable-console \
         --include-data-dir=mod=mod \
         --include-data-files=asset-manifest.json=./ \
         --include-data-files=index.android.bundle=./ \
@@ -116,18 +124,33 @@
    ```
    - 這樣會把 mod 資料夾（含 data、js 等所有內容）完整打包進執行檔。
 
-3. 用 signtool 加上數位簽章（需先用 PowerShell 產生 .pfx 憑證，或購買正式憑證）：
-   ```powershell
-   & "C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\signtool.exe" sign /f "E:\moyul\Desktop\ReversedFront\mod\data\ReversedFront.pfx" /p <你的密碼> /tr http://timestamp.digicert.com /td sha256 /fd sha256 "E:\moyul\Desktop\ReversedFront\dist\ReversedFront.exe"
+4. 打包與簽章（整合流程）：
    ```
-   - `<你的密碼>` 請填入你匯出 pfx 時設定的密碼
-   - 若路徑不同請自行調整
+   build_and_sign.bat
+   ```
+   - 執行此腳本可以選擇：「打包程式」、「簽署程式」或「打包並簽署程式」
+   - 建議選擇第3項「打包並簽署程式」，一次完成整個流程
+   - 系統會自動檢查環境、打包程式，然後使用內建的簽章檔案進行簽署
+   - 簽署時需要輸入 mod/data/ReversedFront.pfx 的密碼
+   - **數位簽章可有效防止被 Windows Defender 誤判為病毒**
+   
+   分開執行的方式：
+   ```
+   build.bat  (僅打包)
+   sign.bat   (僅簽署)
+   ```
 
-- `--output-dir` 可自訂輸出路徑，請依個人需求調整（如 `output`、`dist` 等）。
-- `--output-filename` 可自訂產生的執行檔名稱，預設為 `ReversedFront.exe`。
-- `--assume-yes-for-downloads` 可自動同意 Nuitka 下載依賴工具，打包過程不會中斷。
-- `--windows-console-mode=disable` 可隱藏 DOS/命令提示字元視窗，讓程式完全視窗化。
-- 新增 Windows 資訊欄位，使程式在系統中顯示更專業。
+### Nuitka 打包參數說明
+
+- `--output-dir=dist` - 輸出到 dist 目錄
+- `--output-filename=ReversedFront.exe` - 設定輸出檔名
+- `--disable-console` - 隱藏命令提示字元視窗（新版 Nuitka 使用此參數）
+- `--assume-yes-for-downloads` - 自動同意下載依賴項目
+- `--windows-company-name="ESC"` - 設定公司名稱
+- `--windows-product-name="ReversedFront"` - 設定產品名稱
+- `--plugin-enable=pywebview-ui` - 啟用 pywebview 插件支援
+- `--disable-plugin=anti-bloat` - 關閉可能導致程式不穩定的最佳化
+- `--include-data-dir=mod=mod` - 包含 mod 目錄及其所有檔案
 
 ## 程式碼優化與維護
 

@@ -1,3 +1,26 @@
+// 導入鍵盤初始化腳本與視窗管理器
+import { initKeyboardControls } from '../ui/keyboardInit.js';
+import { initWindowManager, toggleFullscreen } from '../ui/windowManager.js';
+
+// 立即初始化視窗管理器（優先於其他模塊）
+if (typeof initWindowManager === 'function') {
+    console.log('entrypoint.js: 立即初始化視窗管理器');
+    try {
+        initWindowManager();
+        console.log('entrypoint.js: 視窗管理器初始化成功');
+    } catch (e) {
+        console.error('entrypoint.js: 視窗管理器初始化失敗', e);
+    }
+}
+
+// 確保鍵盤控制被初始化 (延遲執行，確保優先級較低)
+setTimeout(() => {
+    if (typeof initKeyboardControls === 'function') {
+        console.log('entrypoint.js: 延遲初始化鍵盤控制');
+        initKeyboardControls();
+    }
+}, 500);
+
 // 動態插入功能選單相關 DOM 結構
 (function insertCustomControlsDOM() {
     if (document.getElementById('custom-controls-toggle')) return; // 已插入則跳過
@@ -111,10 +134,18 @@ window.addEventListener('pywebviewready', async function() {
     const fullscreenBtn = document.getElementById('toggle-fullscreen');
     if (fullscreenBtn) {
         fullscreenBtn.onclick = function() {
-            if(window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen) {
+            // 使用視窗管理器的統一方法
+            if (typeof toggleFullscreen === 'function') {
+                console.log('使用視窗管理器切換全屏');
+                toggleFullscreen();
+            } else if (window.rfToggleFullscreen) {
+                console.log('使用全局方法切換全屏');
+                window.rfToggleFullscreen();
+            } else if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen) {
+                console.log('直接使用 API 切換全屏');
                 window.pywebview.api.toggle_fullscreen();
             } else {
-                alert('未偵測到 pywebview API');
+                console.warn('未偵測到任何可用的全屏切換方法');
             }
         };
     }
@@ -133,6 +164,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         setupCustomControls(); // 確保 DOM ready 時也掛載
         setupRankingModalEvents(); // 確保排行榜事件綁定
+        
+        // 初始化鍵盤事件處理 - 只處理 F11 鍵，讓 ESC 由 keyboard_handler 處理
+        document.addEventListener('keydown', function(event) {
+            // 僅處理 F11 鍵 - 切換全屏
+            if (event.key === 'F11' || event.keyCode === 122) {
+                console.log('entrypoint.js 捕獲F11按鍵，觸發全屏切換');
+                if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen) {
+                    window.pywebview.api.toggle_fullscreen();
+                    event.preventDefault();
+                    return false;
+                }
+            }
+            
+            // 注意：不再在此處理 ESC 鍵，避免重複觸發
+        }, true);
     } catch(e) {}
 });
 // 只偵測地圖 DOM 是否有變化，必要時才重新綁定 marker 互動

@@ -53,8 +53,38 @@ export function showExitConfirm(prompt) {
     `;
     document.body.appendChild(overlay);
     document.getElementById('exit-confirm-yes').onclick = function() {
+        // 顯示關閉中的訊息
+        const dialogContent = overlay.querySelector('div > div:first-child');
+        if (dialogContent) {
+            dialogContent.textContent = '正在關閉應用...';
+        }
+        
+        // 禁用按鈕避免重複點擊
+        const buttons = overlay.querySelectorAll('button');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            btn.style.cursor = 'not-allowed';
+        });
+        
+        // 調用退出API
         if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
+            // 調用API後，設置一個備用的強制關閉計時器
             window.pywebview.api.exit_app();
+            
+            // 如果3秒後還在運行，嘗試強制關閉窗口
+            setTimeout(() => {
+                try {
+                    window.close();
+                } catch(e) {}
+                
+                // 如果還在運行，顯示提示
+                setTimeout(() => {
+                    if (dialogContent) {
+                        dialogContent.textContent = '請手動關閉應用視窗';
+                    }
+                }, 2000);
+            }, 3000);
         } else {
             window.close();
         }

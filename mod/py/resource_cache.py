@@ -6,13 +6,15 @@ import time
 import shutil
 import threading
 import urllib.parse
+import urllib.request
+import urllib.error
 import logging
-import requests
-import concurrent.futures
-import tempfile
 import multiprocessing
+import concurrent.futures
 from queue import Queue
-from pathlib import Path
+# 不再使用Path，使用os.path代替
+# 保留 requests 以兼容現有代碼，但新代碼優先使用 urllib
+import requests
 
 # 禁用日誌
 logger = logging.getLogger('ResourceCache')
@@ -87,13 +89,8 @@ class ResourceCacheManager:
         if not os.path.exists(passionfruit_dir):
             try:
                 os.makedirs(passionfruit_dir, exist_ok=True)
-                # 在 Windows 上將目錄設為隱藏
-                if os.name == 'nt':  
-                    try:
-                        import ctypes
-                        ctypes.windll.kernel32.SetFileAttributesW(self.base_dir, 2)
-                    except:
-                        pass
+                # 不再將目錄設為隱藏，改用命名方式標示為特殊目錄
+                # 避免使用 Windows API 直接修改文件屬性，防止被誤判為惡意軟件
             except Exception:
                 pass
         
@@ -106,10 +103,11 @@ class ResourceCacheManager:
         self.download_thread = None  # 主下載監控線程
     
     def _get_resource_cache_dir(self):
-        """獲取資源緩存目錄"""
-        dir_name = self.app_name
-        cache_dir = os.path.join(tempfile.gettempdir(), f".{dir_name}_cache")
-        os.makedirs(cache_dir, exist_ok=True)
+        """獲取資源緩存目錄（使用與配置相同的目錄）"""
+        # 導入配置工具中的函數
+        from mod.py.config_utils import get_hidden_config_dir
+        # 直接使用配置目錄
+        cache_dir = get_hidden_config_dir()
         return cache_dir
         
     def start_download_thread(self):

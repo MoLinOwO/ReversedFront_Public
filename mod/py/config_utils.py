@@ -5,20 +5,13 @@ import shutil
 import tempfile
 
 def get_hidden_config_dir():
-    """獲取隱藏的設定檔目錄"""
+    """獲取設定檔目錄（使用統一的應用目錄）"""
     app_name = "RF_Assist"
-    # 使用系統臨時目錄
-    hidden_dir = os.path.join(tempfile.gettempdir(), f".{app_name}_cache")
+    # 使用系統臨時目錄，用下劃線前綴標記
+    config_dir = os.path.join(tempfile.gettempdir(), f"__{app_name}")
     # 確保目錄存在
-    os.makedirs(hidden_dir, exist_ok=True)
-    # 在 Windows 上將目錄設為隱藏 (使用純Python方法，避免subprocess)
-    if os.name == 'nt' and os.path.exists(hidden_dir):
-        try:
-            import ctypes
-            ctypes.windll.kernel32.SetFileAttributesW(hidden_dir, 2)  # 2 = FILE_ATTRIBUTE_HIDDEN
-        except:
-            pass  # 忽略任何錯誤，避免黑視窗
-    return hidden_dir
+    os.makedirs(config_dir, exist_ok=True)
+    return config_dir
 
 def get_config_file():
     # 先檢查隱藏目錄中的設定檔
