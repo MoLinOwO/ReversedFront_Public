@@ -13,6 +13,34 @@ function getDomOrWarn(id, warnMsg) {
     return el;
 }
 
+// 獲取當前選中的帳號（用於多實例隔離）
+function getCurrentSelectedAccount() {
+    const accountSelect = document.getElementById('account-select');
+    if (!accountSelect || accountSelect.selectedIndex < 0) {
+        return null;
+    }
+    return {
+        accountIdx: accountSelect.selectedIndex,
+        account: accountSelect.options[accountSelect.selectedIndex].text
+    };
+}
+
+// 獲取完整的帳號資訊（包含密碼）
+async function getCurrentAccountData() {
+    const selected = getCurrentSelectedAccount();
+    if (!selected) return null;
+    
+    try {
+        const accounts = await window.pywebview.api.get_accounts();
+        if (accounts && selected.accountIdx < accounts.length) {
+            return accounts[selected.accountIdx];
+        }
+    } catch (e) {
+        console.error('獲取帳號列表失敗:', e);
+    }
+    return null;
+}
+
 function createFactionFilterDropdown(controlsPanel) {
     if (document.getElementById('rf-faction-filter')) return;
     const container = document.createElement('div');
@@ -43,16 +71,24 @@ function createFactionFilterDropdown(controlsPanel) {
     controlsPanel.appendChild(container);
 
     // 初始化選項，支援 pywebview 及網頁版
-    function syncFactionFilterFromConfig() {
+    async function syncFactionFilterFromConfig() {
         if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
-            window.pywebview.api.get_report_faction_filter().then(val => {
+            try {
+                // 獲取當前帳號資訊用於多實例隔離
+                const targetAccount = await getCurrentAccountData();
+                const val = await window.pywebview.api.get_report_faction_filter(targetAccount);
+                
                 if (val && options.includes(val)) {
                     select.value = val;
                 } else {
                     select.value = '全部';
                 }
                 if (window.updateFactionFilter) window.updateFactionFilter(select.value);
-            });
+            } catch (e) {
+                console.error('獲取戰報篩選設定失敗:', e);
+                select.value = '全部';
+                if (window.updateFactionFilter) window.updateFactionFilter('全部');
+            }
         } else {
             // 網頁版：預設為全部
             select.value = '全部';
@@ -62,10 +98,31 @@ function createFactionFilterDropdown(controlsPanel) {
     window.addEventListener('pywebviewready', syncFactionFilterFromConfig);
     document.addEventListener('DOMContentLoaded', syncFactionFilterFromConfig);
 
+    // 監聽帳號選擇變更，重新同步戰報篩選設定
+    function setupAccountChangeListener() {
+        const accountSelect = document.getElementById('account-select');
+        if (accountSelect) {
+            accountSelect.addEventListener('change', () => {
+                // 延遲一點以確保帳號變更完成
+                setTimeout(syncFactionFilterFromConfig, 100);
+            });
+        } else {
+            // 如果帳號選擇框還沒出現，稍後再試
+            setTimeout(setupAccountChangeListener, 1000);
+        }
+    }
+    setupAccountChangeListener();
+
     // 監聽變更
-    select.addEventListener('change', function() {
+    select.addEventListener('change', async function() {
         if (window.pywebview && window.pywebview.api && window.pywebview.api.save_report_faction_filter) {
-            window.pywebview.api.save_report_faction_filter(this.value);
+            try {
+                // 獲取當前帳號資訊用於多實例隔離
+                const targetAccount = await getCurrentAccountData();
+                await window.pywebview.api.save_report_faction_filter(this.value, targetAccount);
+            } catch (e) {
+                console.error('保存戰報篩選設定失敗:', e);
+            }
         }
         if (window.updateFactionFilter) window.updateFactionFilter(this.value);
     });

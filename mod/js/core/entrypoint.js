@@ -155,9 +155,9 @@ window.addEventListener('pywebviewready', async function() {
         markerInteractionInitialized = true;
     }
 });
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     try {
-        initializeMessageObserver(); // 初始化訊息觀察者
+        await initializeMessageObserver(); // 初始化訊息觀察者
         if (!markerInteractionInitialized) {
             setupMarkerInteractionOptimized();
             markerInteractionInitialized = true;

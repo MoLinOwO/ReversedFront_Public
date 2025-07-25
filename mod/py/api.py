@@ -11,7 +11,7 @@ import webview
 from typing import Any, Dict, Optional
 
 # 導入其他模塊
-from mod.py.account_manager import get_accounts, add_account, delete_account, set_active_account, get_active_account
+from mod.py.account_settings_manager import get_accounts, add_account, delete_account, set_active_account, get_active_account
 from mod.py.yaml_utils import save_yaml, load_yaml
 from mod.py.config_utils import update_config_fields
 
@@ -245,8 +245,6 @@ class Api:
                 pass
         
         # 6. 使用直接退出的方式
-        import os
-        import sys
         
         # 最後再嘗試銷毀視窗，避免操作被中斷
         try:
@@ -268,62 +266,167 @@ class Api:
         timer.start()
     
     def save_config_volume(self, data: Dict[str, Any]) -> Any:
-        """保存音量設定到配置文件"""
-        try:
-            update_config_fields({
-                'bgm_volume': data.get('bgm'),
-                'se_volume': data.get('se'),
-                'se147_muted': data.get('se147Muted')
-            })
-            # 移除日誌輸出，避免黑視窗閃爍
-            return True
-        except Exception as e:
-            # 移除日誌輸出，避免黑視窗閃爍
-            return {'error': str(e)}
-    
-    def get_config_volume(self) -> Dict[str, Any]:
-        """從配置文件獲取音量設定"""
-        import json
-        from mod.py.config_utils import get_config_file
-        config_path = get_config_file()
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                # 明確轉換欄位名稱，確保 JS 能正確同步
-                return {
-                    'bgm': config.get('bgm_volume', 1.0),
-                    'se': config.get('se_volume', 1.0),
-                    'se147Muted': config.get('se147_muted', False)
-                }
-            except Exception:
-                return {'bgm': 1.0, 'se': 1.0, 'se147Muted': False}
+        """保存音量設定到指定帳戶的設置"""
+        # 導入我們的帳號設置管理器
+        from mod.py import account_settings_manager
+        
+        # 檢查它是否已經初始化
+        if not hasattr(account_settings_manager, 'account_settings_manager'):
+            # 創建實例
+            account_settings_manager.account_settings_manager = account_settings_manager.AccountSettingsManager()
+        
+        # 檢查是否指定了特定帳號
+        target_account_index = None
+        if 'target_account' in data:
+            target_account_data = data['target_account']
+            if target_account_data and 'account' in target_account_data:
+                # 根據帳號名稱和密碼找到對應的索引
+                accounts = account_settings_manager.account_settings_manager.get_accounts()
+                for i, acc in enumerate(accounts):
+                    if (acc.get('account') == target_account_data.get('account') and 
+                        acc.get('password') == target_account_data.get('password', '')):
+                        target_account_index = i
+                        print(f"找到目標帳號索引: {i}, 帳號: {target_account_data.get('account')}")
+                        break
+                
+                if target_account_index is None:
+                    print(f"未找到匹配的帳號: {target_account_data.get('account')}")
+                    return {"success": False, "error": "未找到指定的帳號"}
+        
+        # 使用帳號設置管理器保存音量設置，指定帳號索引
+        if target_account_index is not None:
+            # 直接調用 update_account_settings 並指定帳號索引
+            settings = {}
+            if 'bgm' in data and data['bgm'] is not None:
+                settings['bgm_volume'] = float(data['bgm'])
+            if 'se' in data and data['se'] is not None:
+                settings['se_volume'] = float(data['se'])
+            if 'se147Muted' in data and data['se147Muted'] is not None:
+                settings['se147_muted'] = bool(data['se147Muted'])
+            
+            result = account_settings_manager.account_settings_manager.update_account_settings(
+                settings, account_index=target_account_index)
+            return result if isinstance(result, dict) else {"success": True, "message": "音量設定已保存"}
         else:
-            return {'bgm': 1.0, 'se': 1.0, 'se147Muted': False}
-    
-    def save_report_faction_filter(self, faction: str) -> bool:
-        """保存戰報陣營過濾設定"""
+            # 沒有指定帳號，使用原來的方法（基於全局 active）
+            result = account_settings_manager.account_settings_manager.save_volume_settings(data)
+            return result
+    def get_config_volume(self, target_account=None) -> Dict[str, Any]:
+        """從指定帳戶獲取音量設定"""
+        # 導入我們的帳號設置管理器
+        from mod.py import account_settings_manager
+        
+        # 檢查它是否已經初始化
+        if not hasattr(account_settings_manager, 'account_settings_manager'):
+            # 創建實例
+            account_settings_manager.account_settings_manager = account_settings_manager.AccountSettingsManager()
+        
+        # 檢查是否指定了特定帳號
+        target_account_index = None
+        if target_account and 'account' in target_account:
+            # 根據帳號名稱和密碼找到對應的索引
+            accounts = account_settings_manager.account_settings_manager.get_accounts()
+            for i, acc in enumerate(accounts):
+                if (acc.get('account') == target_account.get('account') and 
+                    acc.get('password') == target_account.get('password', '')):
+                    target_account_index = i
+                    print(f"讀取帳號索引: {i}, 帳號: {target_account.get('account')}")
+                    break
+        
+        # 使用帳號設置管理器獲取音量設置
+        if target_account_index is not None:
+            settings = account_settings_manager.account_settings_manager.get_account_settings(target_account_index)
+            return {
+                'bgm': settings.get('bgm_volume', 1.0),
+                'se': settings.get('se_volume', 1.0),
+                'se147Muted': settings.get('se147_muted', False)
+            }
+        else:
+            # 沒有指定帳號，使用原來的方法
+            return account_settings_manager.account_settings_manager.get_volume_settings()
+    def save_report_faction_filter(self, faction: str, target_account=None) -> bool:
+        """保存戰報陣營過濾設定到指定帳戶"""
         try:
-            update_config_fields({'report_faction_filter': faction})
-            # 移除日誌輸出，避免黑視窗閃爍
+            # 導入我們的帳號設置管理器
+            from mod.py import account_settings_manager
+            
+            # 檢查它是否已經初始化
+            if not hasattr(account_settings_manager, 'account_settings_manager'):
+                # 創建實例
+                account_settings_manager.account_settings_manager = account_settings_manager.AccountSettingsManager()
+            
+            # 檢查是否指定了特定帳號
+            target_account_index = None
+            if target_account and 'account' in target_account:
+                # 根據帳號名稱和密碼找到對應的索引
+                accounts = account_settings_manager.account_settings_manager.get_accounts()
+                for i, acc in enumerate(accounts):
+                    if (acc.get('account') == target_account.get('account') and 
+                        acc.get('password') == target_account.get('password', '')):
+                        target_account_index = i
+                        print(f"保存戰報篩選到帳號索引: {i}, 帳號: {target_account.get('account')}")
+                        break
+            
+            # 使用帳號設置管理器保存設置
+            if target_account_index is not None:
+                # 獲取目標帳號的當前設置
+                current_settings = account_settings_manager.account_settings_manager.get_account_settings(target_account_index)
+                current_faction = current_settings.get('report_faction_filter', '全部')
+                
+                # 只有在不同時才更新
+                if faction != current_faction:
+                    account_settings_manager.account_settings_manager.update_account_settings(
+                        target_account_index, {'report_faction_filter': faction}
+                    )
+            else:
+                # 沒有指定帳號，使用舊方法作為後備
+                from mod.py.account_settings_manager import save_account_settings, get_active_account_settings
+                current_settings = get_active_account_settings()
+                current_faction = current_settings.get('report_faction_filter', '全部')
+                
+                if faction != current_faction:
+                    save_account_settings({'report_faction_filter': faction}, force_update=True)
+                
             return True
         except Exception as e:
-            # 移除日誌輸出，避免黑視窗閃爍
+            print(f"保存戰報篩選設定失敗: {e}")
             return False
 
-    def get_report_faction_filter(self) -> str:
-        """獲取戰報陣營過濾設定"""
-        import json
-        from mod.py.config_utils import get_config_file
-        config_path = get_config_file()
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                return config.get('report_faction_filter', '全部')
-            except Exception:
-                return '全部'
-        return '全部'
+    def get_report_faction_filter(self, target_account=None) -> str:
+        """從指定帳戶獲取戰報陣營過濾設定"""
+        try:
+            # 導入我們的帳號設置管理器
+            from mod.py import account_settings_manager
+            
+            # 檢查它是否已經初始化
+            if not hasattr(account_settings_manager, 'account_settings_manager'):
+                # 創建實例
+                account_settings_manager.account_settings_manager = account_settings_manager.AccountSettingsManager()
+            
+            # 檢查是否指定了特定帳號
+            target_account_index = None
+            if target_account and 'account' in target_account:
+                # 根據帳號名稱和密碼找到對應的索引
+                accounts = account_settings_manager.account_settings_manager.get_accounts()
+                for i, acc in enumerate(accounts):
+                    if (acc.get('account') == target_account.get('account') and 
+                        acc.get('password') == target_account.get('password', '')):
+                        target_account_index = i
+                        print(f"讀取戰報篩選自帳號索引: {i}, 帳號: {target_account.get('account')}")
+                        break
+            
+            # 使用帳號設置管理器獲取設置
+            if target_account_index is not None:
+                settings = account_settings_manager.account_settings_manager.get_account_settings(target_account_index)
+                return settings.get('report_faction_filter', '全部')
+            else:
+                # 沒有指定帳號，使用舊方法作為後備
+                from mod.py.account_settings_manager import get_active_account_settings
+                settings = get_active_account_settings()
+                return settings.get('report_faction_filter', '全部')
+        except Exception as e:
+            print(f"讀取戰報篩選設定失敗: {e}")
+            return '全部'
         
     def check_resource_exists(self, resource_path: str) -> dict:
         """檢查資源是否存在，如不存在則下載"""

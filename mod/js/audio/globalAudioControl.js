@@ -235,25 +235,40 @@
         }
     };
 
-    window.setSE147Muted = function(muted) {
+    // 增加參數 skipSave 用於控制是否跳過保存設置
+    window.setSE147Muted = function(muted, skipSave = false) {
+        // 設置全局變量
         window._rf_se147Muted = muted;
         setMediaVolume();
         updateSe147Volume();
-        // 更新按鈕狀態
+        
+        // 同步更新UI元素
         const se147Button = document.getElementById('se147-toggle-button');
+        const se147Toggle = document.getElementById('se147-toggle');
+        
+        // 更新按鈕狀態
         if (se147Button) {
             se147Button.textContent = `戰報通知：${!muted ? '開' : '關'}`;
             se147Button.style.backgroundColor = !muted ? '#5cb85c' : '#d9534f';
         }
-        // 保存到 config.json
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
-            window.pywebview.api.save_config_volume({
-                bgm: window._rf_bgm_volume,
-                se: window._rf_se_volume,
-                se147Muted: muted
-            }).catch(e => { console.error('戰報通知狀態保存失敗', e); });
-        } else {
-            console.warn('pywebview API 尚未注入，戰報通知狀態未保存');
+        
+        // 更新複選框狀態
+        if (se147Toggle) {
+            se147Toggle.checked = muted;
+        }
+        
+        // 只在不跳過保存設置時才執行保存操作
+        if (!skipSave) {
+            // 保存到 config.json
+            if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
+                window.pywebview.api.save_config_volume({
+                    bgm: window._rf_bgm_volume,
+                    se: window._rf_se_volume,
+                    se147Muted: muted
+                }).catch(e => { console.error('戰報通知狀態保存失敗', e); });
+            } else {
+                console.warn('pywebview API 尚未注入，戰報通知狀態未保存');
+            }
         }
     };
 
@@ -401,9 +416,30 @@
     // 初始化音量與戰報通知設定
     if (window.pywebview && window.pywebview.api && window.pywebview.api.get_config_volume) {
         window.pywebview.api.get_config_volume().then(cfg => {
-            if (typeof cfg.bgm === 'number') window.setBGMVolume(cfg.bgm);
-            if (typeof cfg.se === 'number') window.setSEVolume(cfg.se);
-            if (typeof cfg.se147Muted === 'boolean') window.setSE147Muted(cfg.se147Muted);
+            // 不使用 setBGMVolume/setSEVolume 來避免觸發保存操作
+            // 只設置內存中的值和音頻節點，但不觸發配置保存
+            if (typeof cfg.bgm === 'number') {
+                window._rf_bgm_volume = cfg.bgm;
+                window._rf_bgmGainNodes.forEach(node => {
+                    if (node && node.gain) node.gain.value = cfg.bgm;
+                });
+                setMediaVolume();
+            }
+            
+            if (typeof cfg.se === 'number') {
+                window._rf_se_volume = cfg.se;
+                window._rf_seGainNodes.forEach(node => {
+                    if (node && node.gain) node.gain.value = cfg.se;
+                });
+                setMediaVolume();
+                updateSe147Volume();
+            }
+            
+            if (typeof cfg.se147Muted === 'boolean') {
+                // 使用 skipSave=true 來避免在初始化時保存設置
+                window.setSE147Muted(cfg.se147Muted, true);
+            }
+            
             // 若 customControls.js 已載入，則同步 UI
             if (window.updateCustomControlsUI) window.updateCustomControlsUI(cfg);
         });

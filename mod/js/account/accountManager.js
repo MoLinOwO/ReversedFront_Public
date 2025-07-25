@@ -40,6 +40,51 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             await api.setActiveAccount(parseInt(this.value));
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
+            
+            // 當切換帳號時，重新同步音量設定
+            if (window.updateCustomControlsUI && window.pywebview && window.pywebview.api) {
+                try {
+                    const accounts = await window.pywebview.api.get_accounts();
+                    const accountIdx = parseInt(this.value);
+                    if (accounts && accountIdx < accounts.length) {
+                        const targetAccount = accounts[accountIdx];
+                        const cfg = await window.pywebview.api.get_config_volume(targetAccount);
+                        
+                        console.log(`切換到帳號 ${targetAccount.account}，音量設定:`, cfg);
+                        
+                        // 不只更新 UI，還要實際應用音量設定
+                        if (window.setBGMVolume && typeof cfg.bgm === 'number') {
+                            window._rf_bgm_volume = cfg.bgm;
+                            if (window._rf_bgmGainNodes && Array.isArray(window._rf_bgmGainNodes)) {
+                                window._rf_bgmGainNodes.forEach(node => {
+                                    if (node && node.gain) node.gain.value = cfg.bgm;
+                                });
+                            }
+                            if (window.setMediaVolume) window.setMediaVolume();
+                        }
+                        
+                        if (window.setSEVolume && typeof cfg.se === 'number') {
+                            window._rf_se_volume = cfg.se;
+                            if (window._rf_seGainNodes && Array.isArray(window._rf_seGainNodes)) {
+                                window._rf_seGainNodes.forEach(node => {
+                                    if (node && node.gain) node.gain.value = cfg.se;
+                                });
+                            }
+                            if (window.setMediaVolume) window.setMediaVolume();
+                            if (window.updateSe147Volume) window.updateSe147Volume();
+                        }
+                        
+                        if (window.setSE147Muted && typeof cfg.se147Muted === 'boolean') {
+                            window.setSE147Muted(cfg.se147Muted, true);
+                        }
+                        
+                        // 最後更新 UI 顯示
+                        window.updateCustomControlsUI(cfg);
+                    }
+                } catch (e) {
+                    console.error('切換帳號時同步音量設定失敗:', e);
+                }
+            }
         };
     });
     document.querySelectorAll('.del-account-btn').forEach(btn => {
@@ -116,9 +161,10 @@ window.autoLogin = function(account, password) {
 export async function autofillActiveAccount() {
     let savedAccount = null;
     try {
-        savedAccount = await api.getActiveAccount();
+        savedAccount = await getCurrentSelectedAccountForLogin();
     } catch(e) {}
     if(savedAccount) {
+        console.log(`自動填入將使用選擇的帳號: ${savedAccount.account}`);
         let tryCount = 0;
         let autofillTimer = setInterval(function() {
             let accountInput = Array.from(document.querySelectorAll('input'))
@@ -169,11 +215,40 @@ export async function autofillActiveAccount() {
     }
 }
 
+// 獲取當前界面選擇的帳號
+async function getCurrentSelectedAccountForLogin() {
+    try {
+        const accounts = await api.getAccounts();
+        if (!accounts || accounts.length === 0) return null;
+        
+        // 查找當前選中的 radio button
+        const selectedRadio = document.querySelector('input[name="account-radio"]:checked');
+        if (selectedRadio) {
+            const selectedIdx = parseInt(selectedRadio.value);
+            if (selectedIdx >= 0 && selectedIdx < accounts.length) {
+                const selectedAccount = accounts[selectedIdx];
+                console.log(`自動登入將使用界面選擇的帳號: ${selectedAccount.account} (索引: ${selectedIdx})`);
+                return selectedAccount;
+            }
+        }
+        
+        // 如果沒有找到選中的 radio，回退到 active account
+        const activeAccount = await api.getActiveAccount();
+        if (activeAccount) {
+            console.log(`自動登入回退到配置中的活動帳號: ${activeAccount.account}`);
+        }
+        return activeAccount;
+    } catch (e) {
+        console.error('獲取當前選擇帳號失敗:', e);
+        return null;
+    }
+}
+
 // 進入 /#/users/log_in 頁面自動觸發 autoLogin
 window.addEventListener('hashchange', async function() {
     if (location.hash.startsWith('#/users/log_in')) {
         try {
-            const savedAccount = await api.getActiveAccount();
+            const savedAccount = await getCurrentSelectedAccountForLogin();
             if (savedAccount && savedAccount.account && savedAccount.password) {
                 setTimeout(() => {
                     window.autoLogin(savedAccount.account, savedAccount.password);
@@ -186,7 +261,7 @@ window.addEventListener('hashchange', async function() {
 if (location.hash.startsWith('#/users/log_in')) {
     (async () => {
         try {
-            const savedAccount = await api.getActiveAccount();
+            const savedAccount = await getCurrentSelectedAccountForLogin();
             if (savedAccount && savedAccount.account && savedAccount.password) {
                 setTimeout(() => {
                     window.autoLogin(savedAccount.account, savedAccount.password);
@@ -206,7 +281,7 @@ let hashPollTimer = setInterval(() => {
         if (location.hash.startsWith('#/users/log_in')) {
             (async () => {
                 try {
-                    const savedAccount = await api.getActiveAccount();
+                    const savedAccount = await getCurrentSelectedAccountForLogin();
                     if (savedAccount && savedAccount.account && savedAccount.password) {
                         setTimeout(() => {
                             window.autoLogin(savedAccount.account, savedAccount.password);

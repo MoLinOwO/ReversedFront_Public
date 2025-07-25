@@ -8,6 +8,34 @@ let isInitialized = false; // Guard against re-initialization
 
 let currentFactionFilter = '全部';
 
+// 獲取當前選中的帳號（用於多實例隔離）
+function getCurrentSelectedAccount() {
+    const accountSelect = document.getElementById('account-select');
+    if (!accountSelect || accountSelect.selectedIndex < 0) {
+        return null;
+    }
+    return {
+        accountIdx: accountSelect.selectedIndex,
+        account: accountSelect.options[accountSelect.selectedIndex].text
+    };
+}
+
+// 獲取完整的帳號資訊（包含密碼）
+async function getCurrentAccountData() {
+    const selected = getCurrentSelectedAccount();
+    if (!selected) return null;
+    
+    try {
+        const accounts = await window.pywebview.api.get_accounts();
+        if (accounts && selected.accountIdx < accounts.length) {
+            return accounts[selected.accountIdx];
+        }
+    } catch (e) {
+        console.error('獲取帳號列表失敗:', e);
+    }
+    return null;
+}
+
 /**
  * Creates and injects the dedicated highlighter element and a style tag.
  * This runs only once and sets up all static styles for performance.
@@ -177,7 +205,7 @@ function passesFactionFilter(text) {
     return faction === currentFactionFilter;
 }
 
-export function initializeMessageObserver() {
+export async function initializeMessageObserver() {
     // Prevent multiple initializations, which would lead to memory leaks
     // by attaching multiple observers and event listeners.
     if (isInitialized) {
@@ -239,8 +267,14 @@ export function initializeMessageObserver() {
 
     // 初始化過濾條件
     if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
-        window.pywebview.api.get_report_faction_filter().then(val => {
+        try {
+            // 獲取當前帳號資訊用於多實例隔離
+            const targetAccount = await getCurrentAccountData();
+            const val = await window.pywebview.api.get_report_faction_filter(targetAccount);
             currentFactionFilter = val || '全部';
-        });
+        } catch (e) {
+            console.error('獲取戰報篩選設定失敗:', e);
+            currentFactionFilter = '全部';
+        }
     }
 }

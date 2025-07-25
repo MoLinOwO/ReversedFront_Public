@@ -8,7 +8,7 @@ window.windowState = {
     isFullScreen: false,
     previousState: null,
     lastToggleTime: 0,
-    debug: true,  // 啟用除錯輸出
+    debug: false,  // 關閉除錯輸出
     // 固定視窗大小
     fixedWidth: 1280,
     fixedHeight: 720,

@@ -18,25 +18,34 @@ from mod.py.sys_utils import init_app_environment
 init_app_environment()
 
 # 版本與資源配置
-LOCAL_VERSION = "2.1"
+LOCAL_VERSION = "2.3"
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 RESOURCE_SERVER_BASE = "https://media.komisureiya.com/"
 
 # 導入主要模組
-from mod.py.config_utils import save_exe_path_to_config, get_account_file
-from mod.py.account_manager import ensure_account_file
+from mod.py.config_utils import save_exe_path_to_config
 from mod.py.resource_cache import ResourceCacheManager
 from mod.py.auto_update import get_cloud_latest_info, download_and_restart
 from mod.py.resource_interceptor import inject_resource_interceptor
 from mod.py.keyboard_handler import init_keyboard_handler, start_keyboard_handler
 from mod.py.api import Api
 
-# 存儲exe路徑並獲取帳號文件
+# 存儲exe路徑
 save_exe_path_to_config()
-ACCOUNT_FILE = get_account_file()
 
 # 建立資源緩存管理器實例
 resource_manager = ResourceCacheManager(server_base_url=RESOURCE_SERVER_BASE)
+
+# 初始化帳號設定管理器
+from mod.py import account_settings_manager
+try:
+    from mod.py.account_settings_manager import AccountSettingsManager
+    account_settings_manager_instance = AccountSettingsManager()
+    # 全局變量供 API 使用
+    account_settings_manager.account_settings_manager = account_settings_manager_instance
+    print("成功初始化帳號設定管理器")
+except Exception as e:
+    print(f"初始化帳號設定管理器失敗: {e}")
 
 # 檢查index.html
 static_dir = os.path.abspath(os.path.dirname(__file__))
@@ -212,10 +221,12 @@ def start_main_window() -> None:
 if __name__ == "__main__":
     try:
         # 確保帳戶檔案存在
+        from mod.py.account_settings_manager import ensure_account_file
         ensure_account_file()
         
         # 啟動主視窗
         start_main_window()
-    except Exception:
+    except Exception as e:
+        print(f"啟動失敗: {e}")
         # 靜默退出程序
         sys.exit(0)
