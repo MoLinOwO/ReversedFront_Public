@@ -42,44 +42,16 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             autofillActiveAccount();
             
             // 當切換帳號時，重新同步音量設定
-            if (window.updateCustomControlsUI && window.pywebview && window.pywebview.api) {
+            if (window.syncAudioControlsWithConfig && window.pywebview && window.pywebview.api) {
                 try {
                     const accounts = await window.pywebview.api.get_accounts();
                     const accountIdx = parseInt(this.value);
                     if (accounts && accountIdx < accounts.length) {
                         const targetAccount = accounts[accountIdx];
-                        const cfg = await window.pywebview.api.get_config_volume(targetAccount);
+                        console.log(`切換到帳號 ${targetAccount.account}，開始同步音量設定...`);
                         
-                        console.log(`切換到帳號 ${targetAccount.account}，音量設定:`, cfg);
-                        
-                        // 不只更新 UI，還要實際應用音量設定
-                        if (window.setBGMVolume && typeof cfg.bgm === 'number') {
-                            window._rf_bgm_volume = cfg.bgm;
-                            if (window._rf_bgmGainNodes && Array.isArray(window._rf_bgmGainNodes)) {
-                                window._rf_bgmGainNodes.forEach(node => {
-                                    if (node && node.gain) node.gain.value = cfg.bgm;
-                                });
-                            }
-                            if (window.setMediaVolume) window.setMediaVolume();
-                        }
-                        
-                        if (window.setSEVolume && typeof cfg.se === 'number') {
-                            window._rf_se_volume = cfg.se;
-                            if (window._rf_seGainNodes && Array.isArray(window._rf_seGainNodes)) {
-                                window._rf_seGainNodes.forEach(node => {
-                                    if (node && node.gain) node.gain.value = cfg.se;
-                                });
-                            }
-                            if (window.setMediaVolume) window.setMediaVolume();
-                            if (window.updateSe147Volume) window.updateSe147Volume();
-                        }
-                        
-                        if (window.setSE147Muted && typeof cfg.se147Muted === 'boolean') {
-                            window.setSE147Muted(cfg.se147Muted, true);
-                        }
-                        
-                        // 最後更新 UI 顯示
-                        window.updateCustomControlsUI(cfg);
+                        // 使用全局音量同步函數
+                        await window.syncAudioControlsWithConfig(targetAccount);
                     }
                 } catch (e) {
                     console.error('切換帳號時同步音量設定失敗:', e);

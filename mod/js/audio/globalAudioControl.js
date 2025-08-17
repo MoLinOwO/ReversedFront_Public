@@ -414,34 +414,42 @@
     }
 
     // 初始化音量與戰報通知設定
-    if (window.pywebview && window.pywebview.api && window.pywebview.api.get_config_volume) {
-        window.pywebview.api.get_config_volume().then(cfg => {
-            // 不使用 setBGMVolume/setSEVolume 來避免觸發保存操作
-            // 只設置內存中的值和音頻節點，但不觸發配置保存
-            if (typeof cfg.bgm === 'number') {
-                window._rf_bgm_volume = cfg.bgm;
+    // 注意：這裡不再直接初始化，而是等待 audioControls.js 中的統一同步
+    // 避免重複初始化和多帳號衝突
+    
+    // 提供一個手動同步的介面給其他模組使用
+    window.applyAudioConfig = function(cfg) {
+        if (!cfg) return;
+        
+        // 只設置內存中的值和音頻節點，但不觸發配置保存
+        if (typeof cfg.bgm === 'number') {
+            window._rf_bgm_volume = cfg.bgm;
+            if (window._rf_bgmGainNodes && Array.isArray(window._rf_bgmGainNodes)) {
                 window._rf_bgmGainNodes.forEach(node => {
                     if (node && node.gain) node.gain.value = cfg.bgm;
                 });
-                setMediaVolume();
             }
-            
-            if (typeof cfg.se === 'number') {
-                window._rf_se_volume = cfg.se;
+            if (window.setMediaVolume) window.setMediaVolume();
+        }
+        
+        if (typeof cfg.se === 'number') {
+            window._rf_se_volume = cfg.se;
+            if (window._rf_seGainNodes && Array.isArray(window._rf_seGainNodes)) {
                 window._rf_seGainNodes.forEach(node => {
                     if (node && node.gain) node.gain.value = cfg.se;
                 });
-                setMediaVolume();
-                updateSe147Volume();
             }
-            
-            if (typeof cfg.se147Muted === 'boolean') {
-                // 使用 skipSave=true 來避免在初始化時保存設置
+            if (window.setMediaVolume) window.setMediaVolume();
+            if (window.updateSe147Volume) window.updateSe147Volume();
+        }
+        
+        if (typeof cfg.se147Muted === 'boolean') {
+            // 使用 skipSave=true 來避免在初始化時保存設置
+            if (window.setSE147Muted) {
                 window.setSE147Muted(cfg.se147Muted, true);
             }
-            
-            // 若 customControls.js 已載入，則同步 UI
-            if (window.updateCustomControlsUI) window.updateCustomControlsUI(cfg);
-        });
-    }
+        }
+        
+        console.log('音頻配置已應用:', cfg);
+    };
 })();

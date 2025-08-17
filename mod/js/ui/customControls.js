@@ -329,6 +329,45 @@ export function setupCustomControls() {
     // 戰報通知過濾下拉選單
     createFactionFilterDropdown(controlsPanel);
     
+    // 添加音量重新同步按鈕 (調試用)
+    if (window.pywebview && !document.getElementById('rf-audio-resync-btn')) {
+        const resyncBtn = document.createElement('button');
+        resyncBtn.id = 'rf-audio-resync-btn';
+        resyncBtn.textContent = '重新同步音量';
+        resyncBtn.style.width = '100%';
+        resyncBtn.style.marginBottom = '10px';
+        resyncBtn.style.background = '#f39c12';
+        resyncBtn.style.color = '#fff';
+        resyncBtn.style.border = 'none';
+        resyncBtn.style.padding = '8px 0';
+        resyncBtn.style.borderRadius = '6px';
+        resyncBtn.style.cursor = 'pointer';
+        resyncBtn.style.fontSize = '0.9em';
+        
+        resyncBtn.onclick = function() {
+            console.log('手動觸發音量重新同步...');
+            if (window.syncAudioControlsWithConfig) {
+                window.syncAudioControlsWithConfig();
+                
+                // 提供視覺反饋
+                resyncBtn.textContent = '同步中...';
+                resyncBtn.disabled = true;
+                setTimeout(() => {
+                    resyncBtn.textContent = '重新同步音量';
+                    resyncBtn.disabled = false;
+                }, 1000);
+            }
+        };
+        
+        // 插入到音量控制區域後面
+        const audioControls = document.getElementById('rf-audio-controls');
+        if (audioControls) {
+            audioControls.appendChild(resyncBtn);
+        } else {
+            controlsPanel.appendChild(resyncBtn);
+        }
+    }
+    
         // 添加下載狀態區域（替代按鈕和右下角浮動提示）
     if (controlsPanel && !document.getElementById('rf-download-status-area')) {
         // 創建下載狀態區域

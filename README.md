@@ -1,205 +1,134 @@
-# ReversedFront
+# Rust 單檔包裝啟動器（ReversedFront.exe）
 
-現代東亞國戰手遊《逆統戰：烽火》輔助前端專案
+本專案內含 Rust 製作的單檔啟動器，可將 `ReversedFront.exe` 內嵌於啟動器本體，於執行時自動釋出至臨時目錄並啟動，無需黑色主控台視窗，且已套用 `logo.ico` 為圖標。
 
-## 專案說明
-本專案為《逆統戰：烽火》遊戲的前端輔助工具，包含：
-- **多帳號管理系統**：支援多組帳密切換、自動填入、多實例獨立運行（僅桌面版）
-- **整合控制面板**：左側可摺疊選單，包含全部功能按鈕、下載狀態及選項
-- **全局快捷鍵**：ESC鍵顯示/隱藏控制面板，F11全屏切換
-- **智能音量控制**：BGM、SE 分別調整，支援戰報通知靜音，設定實時保存
-- **地圖陣營城市排行榜**：即時分析地圖據點分布，浮層顯示，支援拖拉移動
-- **靜態資源與地圖資料整合**：包含實時下載進度顯示
-- **支援自訂退出提示語**：exit_prompts.yaml，隨機顯示多組提示語與按鈕文字
-- **勢力分布圖美化（Voronoi 地圖）**：多種分界模式、圓角柔邊、極致羽化、無分界融合
-- **支援網頁版模組**：直接以瀏覽器開啟 index.html 或部署至 GitHub Pages/Cloudflare Pages 也能享有大部分輔助功能
-- **優化資源下載**：根據CPU核心數自動調整並行下載數量，提升下載速度
-- **GPU加速渲染**：桌面版自動啟用 GPU 加速，提升畫面流暢度和效能
+### 編譯步驟
 
-## 新增功能
+# ReversedFront PC 專案
 
-### 多實例帳號隔離系統（2025/07 更新）
-- 支援同時開啟多個應用實例，每個實例的帳號設定完全獨立
-- 智能檔案鎖定機制，防止多實例之間的設定衝突
-- 音量調整、戰報通知等設定按帳號分別儲存，互不干擾
-- 自動檢測目標帳號，確保設定變更只影響當前選中的帳號
+現代東亞國戰手遊《逆統戰：烽火》輔助前端專案，支援多帳號管理、地圖分析、音量控制、資源優化等多項功能，並提供 Windows 單檔啟動器與 Python/Nuitka 打包方案。
 
-### 代碼優化與清理（2025/07 更新）
-- 移除未使用的模組和重複代碼，提升程式執行效率
-- 清理過時的緩存檔案和靜態資源，減少程式體積
-- 簡化 API 結構，移除冗餘的錯誤處理邏輯
-- 關閉非必要的調試輸出，優化使用者體驗
+---
 
-### GPU加速渲染（2025/07 更新）
-- 自動啟用 GPU 硬體加速，提升遊戲畫面流暢度
-- 優化 CEF 渲染引擎參數配置，提高效能和穩定性
-- 智能檢測系統環境，自動調整最佳渲染設定
+## 目錄
+- [專案簡介](#專案簡介)
+- [功能特色](#功能特色)
+- [系統需求](#系統需求)
+- [Rust 單檔啟動器](#rust-單檔啟動器)
+- [Python/Nuitka 打包](#pythonnuitka-打包)
+- [自訂與擴充](#自訂與擴充)
+- [常見問題](#常見問題)
+- [更新日誌](#更新日誌)
 
-### 整合控制面板（2025/07 更新）
-- 將所有功能整合至左側可摺疊控制面板，界面更簡潔、操作更方便
-- 按 ESC 鍵可快速顯示/隱藏控制面板，F11 鍵可切換全屏模式
-- 控制面板內整合了資源下載狀態顯示，即時查看下載進度和詳細信息
-- 面板內包含音量調整、排行榜顯示、全屏切換等所有功能按鈕
+---
 
-### 優化資源下載（2025/07 更新）
-- 根據CPU核心數自動調整並行下載工作線程數量
-- 在控制面板中實時顯示下載進度、隊列長度和活動下載數
-- 桌面版會自動使用系統緩存目錄儲存資源文件，避免重複下載
+## 專案簡介
 
-### 智能音量控制系統
-- 功能選單內可調整背景音樂（BGM）、音效（SE）音量，支援靜音與即時預覽
-- **戰報通知靜音功能**：可單獨關閉戰報音效（SE147），不影響其他遊戲音效
-- 音量設定會自動保存於各帳號設定中，多實例環境下各帳號設定獨立
-- 防止音量調整過程中清空帳號密碼，使用事件優化機制確保資料安全
-- 桌面與網頁版皆可獨立調整音量設定
+本專案為《逆統戰：烽火》PC 端輔助前端，整合多帳號管理、地圖勢力分析、音量控制、資源下載優化、GPU 加速渲染等功能，支援桌面版與網頁版模組，並可自訂退出提示語、分布圖美化等。
 
-### 支援網頁版模組
-- 直接以瀏覽器開啟 index.html 或部署至 GitHub Pages/Cloudflare Pages 也能使用大部分輔助功能
-- 網頁版自動偵測環境，僅桌面版顯示帳號管理、全螢幕、退出遊戲等專屬功能
-- 地圖據點、排行榜、勢力分布圖等輔助功能皆可於網頁版完整使用
+---
 
-## 勢力分布圖美化與自訂
+## 功能特色
+- 多帳號管理與隔離，支援多實例獨立設定
+- 整合控制面板，快捷鍵（ESC/F11）快速操作
+- 智能音量控制，支援戰報靜音與即時預覽
+- 地圖陣營城市排行榜、勢力分布圖美化（Voronoi/圓角/羽化/融合）
+- 靜態資源與地圖資料整合，並行下載加速
+- 支援網頁版模組，功能完整
+- 退出提示語自訂（`mod/data/exit_prompts.yaml`）
+- GPU 加速渲染，效能最佳化
+- 多語系、可自訂 UI
 
-主要 JS 檔案：`mod/js/factionMap.js`、`mod/js/customControls.js`
+---
 
-- 勢力分布圖（Voronoi）支援以下美化模式：
-  - **圓角分界**：分界線自動圓角化，雙色漸層、極致柔邊，外觀現代且不遮 UI。
-  - **極致羽化**：不同勢力色塊交界處自動產生羽化模糊漸層，色塊融合自然無銳利邊。
-  - **無分界模式**：完全移除所有分界線，色塊純粹融合，適合極簡或特殊視覺需求。
-- 所有模式皆自動對齊地圖區域，隨視窗縮放自適應。
-- 可依需求調整圓角強度、羽化寬度、融合透明度等參數。
-- 如需切換模式或微調，請修改 `factionMap.js` 相關區塊，或聯絡維護者協助。
-
-## 退出提示語自訂
-
-可於專案根目錄編輯 `mod/data/exit_prompts.yaml`，格式如下：
-
-```yaml
-- message: "珍惜生命，遠離逆統戰"
-  confirm: "確定"
-  cancel: "取消"
-- message: "確定要治癒精神疾病嗎?"
-  confirm: "確定"
-  cancel: "我沒病"
-- message: "你無法離開此遊戲，這可不是在鬧著玩的"
-  confirm: "我不信離不開"
-  cancel: "我信了"
-```
-
-每次點擊「退出遊戲」會隨機挑選一組提示語與按鈕。
-
-## 帳號密碼儲存說明（2025/07 更新）
-- **多實例支援**：支援同時開啟多個程式實例，每個實例的帳號設定完全獨立
-- **智能檔案管理**：帳號密碼資料會自動儲存在系統臨時目錄的隱藏文件夾中
-- **安全性提升**：提高安全性，同時避免帳號資料在升級時被覆蓋
-- **自動管理機制**：程式會自動管理帳號資料，無需手動複製或移動檔案
-- **檔案鎖定保護**：使用檔案鎖定機制防止多實例同時修改配置檔案造成資料損壞
-
-## 系統要求
-- Windows 10/11 64位元（建議 Windows 10 22H2 以上版本）
+## 系統需求
+- Windows 10/11 64位元
 - 4GB RAM 以上
-- 支援 GPU 加速的顯示卡（建議 DirectX 11 兼容）
-- 網路連線
+- 支援 DirectX 11 之 GPU
+- Python 3.8+（如需 Nuitka 打包）
 
-## 打包與簽章指令（2025/07 更新）
-本專案已整理結構，建議直接打包整個 mod 資料夾，指令如下：
+---
 
-1. 安裝 Nuitka（已安裝可略過）：
-   ```sh
-   pip install nuitka
-   ```
+## Rust 單檔啟動器
 
-2. 使用自動打包腳本（推薦）：
-   ```
-   build.bat
-   ```
-   - 這個腳本會自動檢查環境、安裝依賴並使用最佳參數進行打包
-   - 打包完成的執行檔位於 `dist/ReversedFront.exe`
+本專案內含 Rust 製作的單檔啟動器，將 `ReversedFront.exe` 內嵌於啟動器本體，執行時自動釋出至臨時目錄並啟動，無黑色主控台視窗，圖標為 `logo.ico`。
 
-3. 也可使用原始打包指令（手動方式）：
-   ```powershell
-      nuitka --onefile --windows-icon-from-ico=logo.ico --output-dir=dist --output-filename=ReversedFront.exe --assume-yes-for-downloads --disable-console \
-        --include-data-dir=mod=mod \
-        --include-data-files=asset-manifest.json=./ \
-        --include-data-files=index.android.bundle=./ \
-        --include-data-files=index.html=./ \
-        --include-data-files=logo.ico=./ \
-        --include-data-files=logo192.png=./ \
-        --include-data-files=logo512.png=./ \
-        --include-data-files=manifest.json=./ \
-        --include-data-files=robots.txt=./ \
-        --include-data-dir=dexopt=dexopt \
-        --include-data-dir=static=static \
-        --include-data-dir=tiles=tiles \
-        --windows-company-name="ESC" \
-        --windows-product-name="ReversedFront" \
-        --windows-file-version="2.0.0.0" \
-        --windows-product-version="2.0.0.0" \
-        --windows-file-description="ReversedFront PC" \
-        main.py
-   ```
-   - 這樣會把 mod 資料夾（含 data、js 等所有內容）完整打包進執行檔。
+### 編譯流程
+1. 確認 `rf_launcher/ReversedFront.exe` 及專案根目錄的 `logo.ico` 存在。
+2. 於 `rf_launcher` 目錄執行：
+  ```powershell
+  cargo build --release
+  ```
+3. 產生的 `target/release/ReversedFront.exe` 即為單檔啟動器。
 
-4. 打包與簽章（整合流程）：
-   ```
-   build_and_sign.bat
-   ```
-   - 執行此腳本可以選擇：「打包程式」、「簽署程式」或「打包並簽署程式」
-   - 建議選擇第3項「打包並簽署程式」，一次完成整個流程
-   - 系統會自動檢查環境、打包程式，然後使用內建的簽章檔案進行簽署
-   - 簽署時需要輸入 mod/data/ReversedFront.pfx 的密碼
-   - **數位簽章可有效防止被 Windows Defender 誤判為病毒**
-   
-   分開執行的方式：
-   ```
-   build.bat  (僅打包)
-   sign.bat   (僅簽署)
-   ```
+---
 
-### Nuitka 打包參數說明
+## Python/Nuitka 打包
 
-- `--output-dir=dist` - 輸出到 dist 目錄
-- `--output-filename=ReversedFront.exe` - 設定輸出檔名
-- `--disable-console` - 隱藏命令提示字元視窗（新版 Nuitka 使用此參數）
-- `--assume-yes-for-downloads` - 自動同意下載依賴項目
-- `--windows-company-name="ESC"` - 設定公司名稱
-- `--windows-product-name="ReversedFront"` - 設定產品名稱
-- `--plugin-enable=pywebview-ui` - 啟用 pywebview 插件支援
-- `--disable-plugin=anti-bloat` - 關閉可能導致程式不穩定的最佳化
-- `--include-data-dir=mod=mod` - 包含 mod 目錄及其所有檔案
+1. 安裝 Nuitka：
+  ```sh
+  pip install nuitka
+  ```
+2. 推薦使用 `build.bat` 自動打包腳本：
+  ```
+  build.bat
+  ```
+  - 完成後執行檔於 `dist/ReversedFront.exe`
+3. 進階用戶可用 Nuitka 指令手動打包：
+  ```powershell
+  nuitka --onefile --windows-icon-from-ico=logo.ico --output-dir=dist --output-filename=ReversedFront.exe --disable-console \
+    --include-data-dir=mod=mod \
+    --include-data-files=asset-manifest.json=./ \
+    --include-data-files=index.android.bundle=./ \
+    --include-data-files=index.html=./ \
+    --include-data-files=logo.ico=./ \
+    --include-data-files=logo192.png=./ \
+    --include-data-files=logo512.png=./ \
+    --include-data-files=manifest.json=./ \
+    --include-data-files=robots.txt=./ \
+    --include-data-dir=dexopt=dexopt \
+    --include-data-dir=static=static \
+    --include-data-dir=tiles=tiles \
+    --windows-company-name="ESC" \
+    --windows-product-name="ReversedFront" \
+    --windows-file-version="2.0.0.0" \
+    --windows-product-version="2.0.0.0" \
+    --windows-file-description="ReversedFront PC" \
+    main.py
+  ```
+4. 打包與簽章整合流程：
+  ```
+  build_and_sign.bat
+  ```
+  - 可選「打包」、「簽署」或「打包並簽署」
+  - 簽章需輸入 `mod/data/ReversedFront.pfx` 密碼
 
-## 程式碼優化與維護
+---
 
-### 最新程式碼優化（2025/07 更新）
-- **移除冗餘代碼**：清理未使用的模組、重複的 import 語句和過時的 JavaScript 檔案
-- **API 結構簡化**：移除多餘的錯誤處理邏輯，簡化 save_config_volume 和 get_config_volume 方法
-- **緩存檔案清理**：刪除過期的 Python 緩存檔案（.pyc），減少程式體積
-- **調試模式優化**：關閉非必要的 console.log 輸出，保留重要的多實例調試資訊
-- **記憶體使用優化**：重構資源下載管理系統，減少記憶體浪費
+## 自訂與擴充
+- 退出提示語：編輯 `mod/data/exit_prompts.yaml`，可自訂多組訊息與按鈕文字
+- 勢力分布圖美化：調整 `mod/js/factionMap.js` 參數，支援圓角、羽化、融合等多種模式
+- 控制面板與快捷鍵：可於 `mod/js/customControls.js`、`mod/py/keyboard_handler.py` 自訂
+- 多語系支援：可擴充語系檔案，支援繁中、簡中、日文等
 
-### 系統穩定性提升
-- **多實例隔離**：每個程式實例的設定完全獨立，防止相互干擾
-- **檔案鎖定機制**：防止多實例同時寫入配置檔案造成資料損壞
-- **強化錯誤處理**：改善錯誤處理機制，防止程式崩潰
-- **優化啟動流程**：加快載入速度，改善視覺效果和使用者體驗
+---
 
-## 注意事項
-- 請安裝 Python 3.8+ 與 Nuitka。
-- **多實例使用**：可同時開啟多個程式實例，每個實例的帳號和設定完全獨立
-- **音量調整安全**：音量滑桿調整時會自動保護帳號密碼不被清空
-- **戰報靜音功能**：可在音量控制中單獨關閉戰報通知音效（SE147）
-- Nuitka 7.2 之後 `--include-data-files` 目標目錄請用 `./` 或子目錄，不能用 `.`。
-- Nuitka 打包時會自動偵測依賴，若遇到缺少模組請先安裝。
-- 若需推送到 GitHub，請先設定遠端 repo 並執行 `git push`。
-- 若要消除 Windows 防毒誤判，建議加上數位簽章。
-- ESC 鍵已設為控制面板快捷鍵，可在 keyboard_handler.py 中修改快捷鍵配置。
+## 常見問題
+- 執行檔被防毒誤判？請使用數位簽章（`build_and_sign.bat`）
+- 多實例設定衝突？已內建檔案鎖定與隔離機制
+- 音量調整失效？請確認帳號設定檔未損壞
+- 打包失敗？請確認 Python、Nuitka 及依賴皆已安裝
+
+---
 
 ## 更新日誌
-### 2025/07/25
-- **多實例帳號隔離系統**：支援同時開啟多個程式實例，每個實例設定完全獨立
-- **戰報通知靜音功能**：可單獨關閉戰報音效（SE147），不影響其他遊戲音效
-- **音量控制事件優化**：防止音量調整過程中清空帳號密碼，確保資料安全
-- **程式碼大幅優化**：移除冗餘代碼、清理未使用模組、簡化 API 結構
+- 2025/08：新增 Rust 單檔啟動器、圖標自動設定、README 全面重寫
+- 2025/07：多帳號隔離、控制面板整合、GPU 加速、資源下載優化
+- 2025/06：優化帳號儲存、數位簽章、API 結構簡化
+
+---
+
+如需協助或有新功能建議，請聯絡維護者 MoLinOwO。
 - **檔案鎖定機制**：防止多實例同時修改配置檔案造成資料損壞
 - **智能緩存清理**：自動清理過期的 Python 緩存檔案，減少程式體積
 

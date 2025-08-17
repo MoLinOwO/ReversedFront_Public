@@ -122,6 +122,14 @@ window.addEventListener('pywebviewready', async function() {
         }
         await renderAccountManager(accountSection, autofillActiveAccount);
         autofillActiveAccount();
+        
+        // 在帳號管理器渲染完成後，觸發音量控制同步
+        setTimeout(() => {
+            if (window.syncAudioControlsWithConfig) {
+                console.log('帳號管理器渲染完成，開始同步音量控制...');
+                window.syncAudioControlsWithConfig();
+            }
+        }, 500);
     } else {
         accountSection.innerHTML = '';
     }
@@ -179,6 +187,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             // 注意：不再在此處理 ESC 鍵，避免重複觸發
         }, true);
+        
+        // 額外的音量控制同步檢查
+        // 延遲執行以確保所有模組都已載入
+        setTimeout(() => {
+            if (window.pywebview && window.syncAudioControlsWithConfig) {
+                console.log('DOMContentLoaded: 觸發額外的音量控制同步檢查');
+                window.syncAudioControlsWithConfig();
+            }
+        }, 2000);
     } catch(e) {}
 });
 // 只偵測地圖 DOM 是否有變化，必要時才重新綁定 marker 互動
