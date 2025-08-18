@@ -349,16 +349,16 @@ class ResourceCacheManager:
                     return True
                 except:
                     pass
-            
-    # 檢查資源是否已在下載隊列中 (使用 Queue 對象)
-    # 注意: Queue 沒有直接檢查內容的方法，所以這部分邏輯簡化了
 
-    # 資源不存在，添加到下載隊列
-    # 構建遠程URL (保留原始URL參數)
-    remote_url = urllib.parse.urljoin(self.server_base_url, local_path)
-    # 添加到下載隊列
-    self.add_resource_to_queue(remote_url, local_path)
-    return False
+        # 檢查資源是否已在下載隊列中 (使用 Queue 對象)
+        # 注意: Queue 沒有直接檢查內容的方法，所以這部分邏輯簡化了
+
+        # 資源不存在，添加到下載隊列
+        # 構建遠程URL (保留原始URL參數)
+        remote_url = urllib.parse.urljoin(self.server_base_url, local_path)
+        # 添加到下載隊列
+        self.add_resource_to_queue(remote_url, local_path)
+        return False
         
     def get_queue_status(self):
         """獲取下載隊列狀態 (實時數據) - 純線程版本"""
