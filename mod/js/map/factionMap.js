@@ -77,7 +77,7 @@ async function loadD3Delaunay() {
     if (window.d3 && window.d3.Delaunay) return window.d3.Delaunay;
     try {
         // The script will attach d3 to the window object, or return it as a module
-        const d3 = await import('https://cdn.jsdelivr.net/npm/d3-delaunay@6/dist/d3-delaunay.min.js');
+    const d3 = await import('d3-delaunay');
         return d3.Delaunay || (window.d3 && window.d3.Delaunay);
     } catch (error) {
         console.error("無法載入 d3-delaunay 函式庫:", error);
@@ -103,7 +103,7 @@ export async function drawFactionMapBaseOptimized(ctx, markerData) {
         Delaunay = window.d3.Delaunay;
     } else {
         try {
-            const d3 = await import('https://cdn.jsdelivr.net/npm/d3-delaunay@6/dist/d3-delaunay.min.js');
+            const d3 = await import('d3-delaunay');
             Delaunay = d3.Delaunay || (window.d3 && window.d3.Delaunay);
         } catch {
             return;

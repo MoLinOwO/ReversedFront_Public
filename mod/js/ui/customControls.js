@@ -196,10 +196,17 @@ function addDialogStyles() {
 // 切換全屏模式
 function toggleFullscreen() {
     if (window.pywebview?.api) {
+        const isCurrentlyFullScreen = document.fullscreenElement ||
+            document.webkitFullscreenElement ||
+            document.mozFullScreenElement ||
+            document.msFullscreenElement;
+        const targetMode = isCurrentlyFullScreen ? 'normal' : 'fullscreen';
+        if (window.pywebview.api.set_window_mode) {
+            window.pywebview.api.set_window_mode(targetMode);
+        }
         window.pywebview.api.toggle_fullscreen();
-        console.log('[控制面板] 切換全屏模式');
+        console.log('[控制面板] 切換全屏模式，預期狀態:', targetMode);
     }
-    // 移除隱藏選單代碼，因為已不再使用浮動選單
 }
 
 // 下載狀態已整合到控制面板中，不再需要獨立的對話框

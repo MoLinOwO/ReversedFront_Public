@@ -70,7 +70,6 @@ class ResourceCacheManager:
         )
         self.session.mount('http://', adapter)
         self.session.mount('https://', adapter)
-        self.app_name = "RF_Assist"
         
         # 判斷是否為打包環境
         if getattr(sys, 'frozen', False):
@@ -81,8 +80,15 @@ class ResourceCacheManager:
         else:
             self.temp_dir = None
         
-        # 使用隱藏的資源存儲目錄
+        # 使用 passionfruit 作為資源存儲目錄
         self.base_dir = self._get_resource_cache_dir()
+
+        # 確保 passionfruit 目錄存在
+        if not os.path.exists(self.base_dir):
+            try:
+                os.makedirs(self.base_dir, exist_ok=True)
+            except Exception:
+                pass
         
         # 確保關鍵目錄存在
         passionfruit_dir = os.path.join(self.base_dir, 'passionfruit')
@@ -103,11 +109,9 @@ class ResourceCacheManager:
         self.download_thread = None  # 主下載監控線程
     
     def _get_resource_cache_dir(self):
-        """獲取資源緩存目錄（使用與配置相同的目錄）"""
-        # 導入配置工具中的函數
+        """獲取 passionfruit 資源緩存目錄"""
         from mod.py.config_utils import get_hidden_config_dir
-        # 直接使用配置目錄
-        cache_dir = get_hidden_config_dir()
+        cache_dir = get_hidden_config_dir("passionfruit")
         return cache_dir
         
     def start_download_thread(self):

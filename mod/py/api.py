@@ -1,12 +1,9 @@
+import os
 """
 API 接口類模塊
 提供給 WebView 的 JS API 接口
 """
 
-import os
-import sys
-import threading
-import traceback
 import webview
 from typing import Any, Dict, Optional
 
@@ -45,7 +42,6 @@ class Api:
         """設置窗口固定大小"""
         try:
             if not webview.windows:
-                print("沒有可用的窗口")
                 return False
             
             window = webview.windows[0]
@@ -60,7 +56,6 @@ class Api:
             if height < 600:
                 height = 600
             
-            print(f"設置窗口大小為: {width}x{height}")
             
             # 使用 PyWebView 的原生方法設置窗口大小
             window.resize(width, height)
@@ -71,127 +66,58 @@ class Api:
                 
             return True
         except Exception as e:
-            import traceback
-            print(f"設置窗口大小時發生錯誤: {str(e)}")
-            traceback.print_exc()
+            pass
             return False
     
     def toggle_fullscreen(self) -> None:
-        """切換全屏模式"""
+        """切換全屏模式，並同步寫入 config.json window_mode（先讀取 config 再決定目標狀態）"""
         try:
-            # 獲取第一個窗口
             if not webview.windows:
-                print("沒有可用的窗口")
                 return
-            
             window = webview.windows[0]
-            
-            # 保存窗口狀態 - 先調用窗口管理器的方法
+            # 先保存面板狀態
             js_save_state = """
                 (function() {
                     try {
-                        console.log('API: 保存窗口狀態...');
-                        
-                        // 使用窗口管理器的方法保存面板狀態
                         if (typeof window.savePanelState === 'function') {
                             window.savePanelState();
-                            console.log('API: 使用窗口管理器保存面板狀態');
-                        } else {
-                            // 保存控制面板狀態的備用方法
-                            const controls = document.getElementById('custom-controls');
-                            const toggle = document.getElementById('custom-controls-toggle');
-                            if (controls && toggle) {
-                                const isOpen = controls.style.display !== 'none' && controls.style.display !== '';
-                                let position = { x: 20, y: 20 };
-                                
-                                try {
-                                    const rect = isOpen ? controls.getBoundingClientRect() : toggle.getBoundingClientRect();
-                                    position = { x: rect.left, y: rect.top };
-                                } catch(e) {}
-                                
-                                const panelState = {
-                                    isOpen: isOpen,
-                                    position: position,
-                                    timestamp: Date.now()
-                                };
-                                
-                                localStorage.setItem('rf_panel_state', JSON.stringify(panelState));
-                                console.log('API: 面板狀態已保存到 localStorage');
-                            }
                         }
-                        return true;
-                    } catch(e) {
-                        console.error('API: 保存窗口狀態失敗:', e);
-                        return false;
-                    }
+                    } catch(e) {}
                 })();
             """
-            # 執行保存狀態腳本
             window.evaluate_js(js_save_state)
-            
-            # 切換全屏
-            print("執行全屏切換")
+
+            # 讀取 config.json 目前 window_mode
+            from mod.py.account_settings_manager import AccountSettingsManager
+            manager = AccountSettingsManager()
+            current_mode = manager.get_window_mode()
+            # 決定目標狀態
+            if current_mode == "fullscreen":
+                target_mode = "normal"
+            else:
+                target_mode = "fullscreen"
+
+            # 切換全螢幕
             window.toggle_fullscreen()
-            
-            # 確保重設窗口和UI狀態
+            # 立即寫入 config.json
+            manager.set_window_mode(target_mode)
+
+            # 恢復 UI 狀態
             js_restore = """
                 (function() {
-                    // 延遲執行，確保全屏轉換已完成
                     setTimeout(function() {
                         try {
-                            console.log('API: 恢復UI狀態...');
-                            
-                            // 使用窗口管理器的方法恢復面板狀態
                             if (typeof window.restorePanelState === 'function') {
                                 window.restorePanelState();
-                                console.log('API: 使用窗口管理器恢復面板狀態');
-                            } else {
-                                // 恢復控制面板狀態的備用方法
-                                const controls = document.getElementById('custom-controls');
-                                const toggle = document.getElementById('custom-controls-toggle');
-                                if (controls && toggle) {
-                                    const savedState = localStorage.getItem('rf_panel_state');
-                                    if (savedState) {
-                                        const panelState = JSON.parse(savedState);
-                                        
-                                        // 恢復位置
-                                        if (panelState.position) {
-                                            controls.style.left = panelState.position.x + 'px';
-                                            controls.style.top = panelState.position.y + 'px';
-                                            toggle.style.left = panelState.position.x + 'px';
-                                            toggle.style.top = panelState.position.y + 'px';
-                                        }
-                                        
-                                        // 恢復開/關狀態
-                                        if (panelState.isOpen) {
-                                            controls.style.display = 'block';
-                                            toggle.style.display = 'none';
-                                        } else {
-                                            controls.style.display = 'none';
-                                            toggle.style.display = 'flex';
-                                        }
-                                        
-                                        console.log('API: 面板狀態已從 localStorage 恢復');
-                                    }
-                                }
                             }
-                            return true;
-                        } catch(e) {
-                            console.error('API: 恢復UI狀態失敗:', e);
-                            return false;
-                        }
+                        } catch(e) {}
                     }, 300);
                 })();
             """
-            # 執行恢復狀態腳本
             window.evaluate_js(js_restore)
-            
             return True
         except Exception as e:
-            # 記錄錯誤
-            import traceback
-            print(f"全屏切換發生錯誤: {str(e)}")
-            traceback.print_exc()
+            pass
             return False
     
     def toggle_menu(self) -> None:
@@ -286,11 +212,9 @@ class Api:
                     if (acc.get('account') == target_account_data.get('account') and 
                         acc.get('password') == target_account_data.get('password', '')):
                         target_account_index = i
-                        print(f"找到目標帳號索引: {i}, 帳號: {target_account_data.get('account')}")
                         break
                 
                 if target_account_index is None:
-                    print(f"未找到匹配的帳號: {target_account_data.get('account')}")
                     return {"success": False, "error": "未找到指定的帳號"}
         
         # 使用帳號設置管理器保存音量設置，指定帳號索引
@@ -330,7 +254,6 @@ class Api:
                 if (acc.get('account') == target_account.get('account') and 
                     acc.get('password') == target_account.get('password', '')):
                     target_account_index = i
-                    print(f"讀取帳號索引: {i}, 帳號: {target_account.get('account')}")
                     break
         
         # 使用帳號設置管理器獲取音量設置
@@ -364,7 +287,6 @@ class Api:
                     if (acc.get('account') == target_account.get('account') and 
                         acc.get('password') == target_account.get('password', '')):
                         target_account_index = i
-                        print(f"保存戰報篩選到帳號索引: {i}, 帳號: {target_account.get('account')}")
                         break
             
             # 使用帳號設置管理器保存設置
@@ -389,7 +311,7 @@ class Api:
                 
             return True
         except Exception as e:
-            print(f"保存戰報篩選設定失敗: {e}")
+            pass
             return False
 
     def get_report_faction_filter(self, target_account=None) -> str:
@@ -412,7 +334,6 @@ class Api:
                     if (acc.get('account') == target_account.get('account') and 
                         acc.get('password') == target_account.get('password', '')):
                         target_account_index = i
-                        print(f"讀取戰報篩選自帳號索引: {i}, 帳號: {target_account.get('account')}")
                         break
             
             # 使用帳號設置管理器獲取設置
@@ -425,7 +346,7 @@ class Api:
                 settings = get_active_account_settings()
                 return settings.get('report_faction_filter', '全部')
         except Exception as e:
-            print(f"讀取戰報篩選設定失敗: {e}")
+            pass
             return '全部'
         
     def check_resource_exists(self, resource_path: str) -> dict:

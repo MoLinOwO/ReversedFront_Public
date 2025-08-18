@@ -12,7 +12,7 @@ export async function loadExitPromptsAndShow() {
                     loaded = window.YAML.load(yamlStr);
                 } else {
                     try {
-                        const mod = await import('https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/+esm');
+                        const mod = await import('js-yaml');
                         loaded = mod.load(yamlStr);
                     } catch {}
                 }

@@ -2,47 +2,24 @@ import os
 import sys
 import json
 import shutil
-import tempfile
 
-def get_hidden_config_dir():
-    """獲取設定檔目錄（使用統一的應用目錄）"""
-    app_name = "RF_Assist"
-    # 使用系統臨時目錄，用下劃線前綴標記
-    config_dir = os.path.join(tempfile.gettempdir(), f"__{app_name}")
-    # 確保目錄存在
+def get_hidden_config_dir(target="data"):
+    """
+    獲取設定檔目錄。
+    target: "data" 則回傳 mod/data，"passionfruit" 則回傳 passionfruit
+    """
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+    if target == "passionfruit":
+        config_dir = os.path.join(root, "passionfruit")
+    else:
+        config_dir = os.path.join(root, "mod", "data")
     os.makedirs(config_dir, exist_ok=True)
     return config_dir
 
 def get_config_file():
-    # 先檢查隱藏目錄中的設定檔
-    hidden_dir = get_hidden_config_dir()
+    # 儲存於 mod/data/config.json
+    hidden_dir = get_hidden_config_dir("data")
     hidden_config = os.path.join(hidden_dir, 'config.json')
-    
-    # 如果隱藏設定檔存在，則優先使用它
-    if os.path.isfile(hidden_config):
-        return hidden_config
-    
-    # 否則使用應用程式目錄中的設定檔
-    base_path = os.path.abspath(os.path.dirname(sys.argv[0]))
-    app_config = os.path.normpath(os.path.join(base_path, 'config.json'))
-    
-    # 如果應用程式目錄中的設定檔存在，則複製到隱藏目錄
-    if os.path.isfile(app_config):
-        try:
-            # 先讀取現有設定檔內容
-            with open(app_config, 'r', encoding='utf-8') as f:
-                config = json.load(f)
-            
-            # 寫入到隱藏目錄
-            with open(hidden_config, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
-                
-            return hidden_config
-        except Exception:
-            # 讀取或寫入失敗時，使用應用程式目錄中的設定檔
-            return app_config
-    
-    # 如果沒有任何設定檔，則使用隱藏目錄中的新檔案
     return hidden_config
 
 

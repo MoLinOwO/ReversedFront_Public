@@ -21,14 +21,30 @@ DEFAULT_SETTINGS = {
 }
 
 class AccountSettingsManager:
+    def get_window_mode(self):
+        """取得視窗模式 (normal/maximized/fullscreen/geometry)"""
+        self._ensure_config_file()
+        config = self._read_config()
+        if not config:
+            return "normal"
+        return config.get("window_mode", "normal")
+
+    def set_window_mode(self, mode):
+        """設定視窗模式 (normal/maximized/fullscreen/geometry)"""
+        self._ensure_config_file()
+        config = self._read_config()
+        if not config:
+            config = {'accounts': [], 'active': 0}
+        config["window_mode"] = mode
+        return self._save_config(config)
     """帳號設定管理器，集中處理所有與帳號相關的設定"""
 
     def __init__(self):
         """初始化設定管理器"""
-        self._config_file = get_config_file()
+        from .config_utils import get_hidden_config_dir
+        self._config_file = os.path.join(get_hidden_config_dir("data"), 'config.json')
         self._config_cache = None
         self._has_fcntl = False
-        
         # 檢查是否支援檔案鎖定
         try:
             import fcntl

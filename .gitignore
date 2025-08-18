@@ -1,0 +1,11 @@
+# 忽略 mod/node_modules 及常見開發暫存檔案
+mod/node_modules/
+mod/node_modules
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
+.env
+
+# 忽略 Python 打包產物
+Buildexe/

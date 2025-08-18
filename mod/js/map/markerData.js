@@ -1,5 +1,5 @@
 // 用於管理地圖據點資料的模組
-import YAML from 'https://cdn.jsdelivr.net/npm/js-yaml@4.1.0/+esm';
+import YAML from 'js-yaml';
 import * as api from '../core/api.js';
 
 const YAML_FILE = 'mod/data/RFcity.yaml';
