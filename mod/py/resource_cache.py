@@ -80,23 +80,11 @@ class ResourceCacheManager:
         else:
             self.temp_dir = None
         
-        # 使用 passionfruit 作為資源存儲目錄
+        # 使用 passionfruit 作為資源存儲目錄（只建立一次，不重複 passionfruit/passionfruit）
         self.base_dir = self._get_resource_cache_dir()
-
-        # 確保 passionfruit 目錄存在
         if not os.path.exists(self.base_dir):
             try:
                 os.makedirs(self.base_dir, exist_ok=True)
-            except Exception:
-                pass
-        
-        # 確保關鍵目錄存在
-        passionfruit_dir = os.path.join(self.base_dir, 'passionfruit')
-        if not os.path.exists(passionfruit_dir):
-            try:
-                os.makedirs(passionfruit_dir, exist_ok=True)
-                # 不再將目錄設為隱藏，改用命名方式標示為特殊目錄
-                # 避免使用 Windows API 直接修改文件屬性，防止被誤判為惡意軟件
             except Exception:
                 pass
         
@@ -301,20 +289,22 @@ class ResourceCacheManager:
         # 標準化路徑
         resource_path = resource_path.replace('\\', '/')
         
-        # 處理資源路徑
+        # 處理資源路徑，確保不會重複 passionfruit/passionfruit
         if resource_path.startswith('assets/passionfruit/'):
             resource_path = resource_path[len('assets/'):]
-        elif not resource_path.startswith('passionfruit/'):
+        elif resource_path.startswith('passionfruit/'):
+            resource_path = resource_path[len('passionfruit/'):]
+        else:
             # 非 passionfruit 開頭的資源路徑，不處理
             return False
-            
+
         # 移除URL參數 (?t=xxx)
         clean_resource_path = resource_path
         if '?' in clean_resource_path:
             clean_resource_path = clean_resource_path.split('?')[0]
-        
+
         # 構建本地路徑 (隱藏的資源目錄)
-        local_path = clean_resource_path
+        local_path = clean_resource_path.lstrip('/')
         abs_path = os.path.normpath(os.path.join(self.base_dir, local_path))
         
         # 檢查資源是否已在下載完成列表中
@@ -360,17 +350,15 @@ class ResourceCacheManager:
                 except:
                     pass
             
-        # 檢查資源是否已在下載隊列中 (使用 Queue 對象)
-        # 注意: Queue 沒有直接檢查內容的方法，所以這部分邏輯簡化了
-        
-        # 資源不存在，添加到下載隊列
-        # 構建遠程URL (保留原始URL參數)
-        remote_path = resource_path.replace('passionfruit/', '')
-        remote_url = urllib.parse.urljoin(self.server_base_url, remote_path)
-        
-        # 添加到下載隊列
-        self.add_resource_to_queue(remote_url, local_path)
-        return False
+    # 檢查資源是否已在下載隊列中 (使用 Queue 對象)
+    # 注意: Queue 沒有直接檢查內容的方法，所以這部分邏輯簡化了
+
+    # 資源不存在，添加到下載隊列
+    # 構建遠程URL (保留原始URL參數)
+    remote_url = urllib.parse.urljoin(self.server_base_url, local_path)
+    # 添加到下載隊列
+    self.add_resource_to_queue(remote_url, local_path)
+    return False
         
     def get_queue_status(self):
         """獲取下載隊列狀態 (實時數據) - 純線程版本"""
