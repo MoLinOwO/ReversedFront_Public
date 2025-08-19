@@ -11,7 +11,7 @@ from mod.py.sys_utils import init_app_environment
 init_app_environment()
 
 # 版本與資源配置
-LOCAL_VERSION = "2.7"
+LOCAL_VERSION = "2.8"
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 RESOURCE_SERVER_BASE = "https://media.komisureiya.com/"
 

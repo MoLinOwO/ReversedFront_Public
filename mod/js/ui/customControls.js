@@ -16,13 +16,23 @@ function getDomOrWarn(id, warnMsg) {
 // 獲取當前選中的帳號（用於多實例隔離）
 function getCurrentSelectedAccount() {
     const accountSelect = document.getElementById('account-select');
-    if (!accountSelect || accountSelect.selectedIndex < 0) {
-        return null;
+    if (accountSelect && accountSelect.selectedIndex >= 0) {
+        return {
+            accountIdx: accountSelect.selectedIndex,
+            account: accountSelect.options[accountSelect.selectedIndex].text
+        };
     }
-    return {
-        accountIdx: accountSelect.selectedIndex,
-        account: accountSelect.options[accountSelect.selectedIndex].text
-    };
+    // fallback: 若沒有 select，則用 radio
+    const radio = document.querySelector('input[name="account-radio"]:checked');
+    if (radio) {
+        const idx = parseInt(radio.value);
+        const span = radio.parentElement.querySelector('span');
+        return {
+            accountIdx: idx,
+            account: span ? span.textContent.trim() : ''
+        };
+    }
+    return null;
 }
 
 // 獲取完整的帳號資訊（包含密碼）
@@ -115,6 +125,13 @@ function createFactionFilterDropdown(controlsPanel) {
             accountSelect.addEventListener('change', () => {
                 // 延遲一點以確保帳號變更完成
                 setTimeout(syncFactionFilterFromConfig, 100);
+                // 新增：同步 radio 狀態
+                const radios = document.querySelectorAll('input[name="account-radio"]');
+                if (radios && accountSelect.selectedIndex >= 0) {
+                    radios.forEach((r, i) => {
+                        r.checked = (i === accountSelect.selectedIndex);
+                    });
+                }
             });
         } else {
             // 如果帳號選擇框還沒出現，稍後再試
@@ -129,10 +146,14 @@ function createFactionFilterDropdown(controlsPanel) {
             try {
                 // 獲取當前帳號資訊用於多實例隔離
                 const targetAccount = await getCurrentAccountData();
-                await window.pywebview.api.save_report_faction_filter(this.value, targetAccount);
+                console.log('[rf-faction-filter] 觸發 save_report_faction_filter:', this.value, targetAccount);
+                const result = await window.pywebview.api.save_report_faction_filter(this.value, targetAccount);
+                console.log('[rf-faction-filter] save_report_faction_filter 回傳:', result);
             } catch (e) {
                 console.error('保存戰報篩選設定失敗:', e);
             }
+        } else {
+            console.warn('[rf-faction-filter] pywebview API 不存在，未呼叫 save_report_faction_filter');
         }
         if (window.updateFactionFilter) window.updateFactionFilter(this.value);
     });

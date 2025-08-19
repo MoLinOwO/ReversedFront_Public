@@ -387,101 +387,79 @@ class AccountSettingsManager:
         # 如果找不到帳號或沒有設置，返回預設設置
         return DEFAULT_SETTINGS.copy()
 
-    def update_account_settings(self, settings, account_index=None):
+    def update_account_settings(self, settings, account_index=None, account_name=None):
         """更新帳號設置
-        
         Args:
             settings: 要更新的設置字典
-            account_index: 帳號索引，不指定則使用當前活動帳號
-            
+            account_index: 帳號索引（可選）
+            account_name: 帳號名稱（可選，優先於 index）
         Returns:
             更新是否成功
         """
         if not settings:
             return True  # 沒有設置需要更新
-            
         self._ensure_config_file()
-        
-        # 重要：每次更新前先讀取最新的配置文件
         config = self._read_config()
         if not config:
             return False
-            
         accounts = config.get('accounts', [])
-        
-        # 保留一份當前完整設定的備份，用於安全檢查
         original_settings = None
-        
-        # 若帳號列表為空，則先獲取現有帳號信息
+        # 新增：優先用 account_name 尋找帳號
+        if account_name:
+            idx = None
+            for i, acc in enumerate(accounts):
+                if acc.get('account') == account_name:
+                    idx = i
+                    break
+            if idx is not None:
+                account_index = idx
+        # ...existing code...
         if not accounts:
-            # 嘗試從本地獲取帳號信息
             try:
                 account = self.get_active_account()
                 if account and 'account' in account and 'password' in account:
-                    # 保留完整帳號資訊
-                    new_account = account.copy()  # 深度複製帳號資訊
+                    new_account = account.copy()
                     if 'settings' not in new_account:
                         new_account['settings'] = DEFAULT_SETTINGS.copy()
                     accounts.append(new_account)
                     config['accounts'] = accounts
                     original_settings = new_account.get('settings', {}).copy()
             except Exception:
-                # 創建默認帳號作為備用
                 accounts.append({
                     'account': 'user0',
                     'password': '',
                     'settings': DEFAULT_SETTINGS.copy()
                 })
                 config['accounts'] = accounts
-        
         if account_index is None:
             account_index = config.get('active', 0)
-        
-        # 確保索引有效
         if not isinstance(account_index, int) or account_index < 0:
             account_index = 0
-            
-        # 安全檢查：如果 account_index 超過了列表長度太多，可能是異常情況
         if account_index > len(accounts) + 5:
-            account_index = 0  # 重置為首個帳號
-        
-        # 確保有足夠的帳號，但最多只擴展到合理範圍
+            account_index = 0
         while len(accounts) <= account_index:
             if accounts:
-                # 深度複製最後一個帳號的全部數據，避免引用問題
                 import copy
                 last_acc = copy.deepcopy(accounts[-1])
-                
-                # 保留原帳號名和密碼，僅初始化或補充設置
                 if 'settings' not in last_acc or not isinstance(last_acc['settings'], dict):
                     last_acc['settings'] = DEFAULT_SETTINGS.copy()
                 else:
-                    # 保留設置但確保包含所有默認值
                     for key, value in DEFAULT_SETTINGS.items():
                         if key not in last_acc['settings']:
                             last_acc['settings'][key] = value
-                
                 accounts.append(last_acc)
-                
-                # 如果這是第一次擴展，保存原始設置用於安全檢查
                 if original_settings is None and account_index == len(accounts) - 1:
                     original_settings = last_acc.get('settings', {}).copy()
             else:
-                # 只有在完全沒有帳號時才創建空白帳號
                 accounts.append({
                     'account': 'user0',
                     'password': '',
                     'settings': DEFAULT_SETTINGS.copy()
                 })
-        
-        # 確保該帳號有完整的 settings 欄位並獲取備份
         if 'settings' not in accounts[account_index]:
             accounts[account_index]['settings'] = DEFAULT_SETTINGS.copy()
         elif not original_settings:
-            # 保存原始設置用於安全檢查
             original_settings = accounts[account_index]['settings'].copy()
-        
-        # 更新設置，只更新有變更的設置
         need_update = False
         for key, value in settings.items():
             if (value is not None and 
@@ -489,31 +467,23 @@ class AccountSettingsManager:
                  accounts[account_index]['settings'][key] != value)):
                 accounts[account_index]['settings'][key] = value
                 need_update = True
-        
-        # 安全檢查：確保帳號資訊不會被意外清空
         if ('account' in accounts[account_index] and 
             accounts[account_index]['account'] and 
             'password' in accounts[account_index]):
-            # 帳號資訊沒有問題，可以正常保存
             pass
         elif original_settings:
-            # 發現帳號資訊有問題，嘗試恢復 
-            # 這是為了避免音量調整清除帳號資訊的問題
             current_account = self.get_active_account()
             if current_account and 'account' in current_account and current_account['account']:
                 accounts[account_index]['account'] = current_account['account']
                 accounts[account_index]['password'] = current_account.get('password', '')
                 print("已恢復可能丟失的帳號資訊")
-        
-        # 只有在有變更時才保存
         if need_update:
             config['accounts'] = accounts
             save_result = self._save_config(config)
             if save_result:
-                return {"success": True, "message": "音量設定已保存"}
+                return {"success": True, "message": "設定已保存"}
             else:
                 return {"success": False, "error": "保存設定失敗"}
-            
         return {"success": True, "message": "無需更新"}
         
     def get_volume_settings(self):

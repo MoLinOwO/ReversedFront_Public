@@ -59,6 +59,12 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             if (window.syncFactionFilterFromConfig) {
                 setTimeout(window.syncFactionFilterFromConfig, 300);
             }
+            // 新增：同步控制面板帳號 select 狀態
+            const accountSelect = document.getElementById('account-select');
+            if (accountSelect) {
+                accountSelect.selectedIndex = window.currentSelectedAccountIdx;
+                accountSelect.dispatchEvent(new Event('change', { bubbles: true }));
+            }
         };
     });
     document.querySelectorAll('.del-account-btn').forEach(btn => {

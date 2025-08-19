@@ -268,50 +268,20 @@ class Api:
             # 沒有指定帳號，使用原來的方法
             return account_settings_manager.account_settings_manager.get_volume_settings()
     def save_report_faction_filter(self, faction: str, target_account=None) -> bool:
-        """保存戰報陣營過濾設定到指定帳戶"""
+        """保存戰報陣營過濾設定到指定帳戶（優先用 account 名稱）"""
         try:
-            # 導入我們的帳號設置管理器
             from mod.py import account_settings_manager
-            
-            # 檢查它是否已經初始化
             if not hasattr(account_settings_manager, 'account_settings_manager'):
-                # 創建實例
                 account_settings_manager.account_settings_manager = account_settings_manager.AccountSettingsManager()
-            
-            # 檢查是否指定了特定帳號
-            target_account_index = None
+            account_name = None
             if target_account and 'account' in target_account:
-                # 根據帳號名稱和密碼找到對應的索引
-                accounts = account_settings_manager.account_settings_manager.get_accounts()
-                for i, acc in enumerate(accounts):
-                    if (acc.get('account') == target_account.get('account') and 
-                        acc.get('password') == target_account.get('password', '')):
-                        target_account_index = i
-                        break
-            
-            # 使用帳號設置管理器保存設置
-            if target_account_index is not None:
-                # 獲取目標帳號的當前設置
-                current_settings = account_settings_manager.account_settings_manager.get_account_settings(target_account_index)
-                current_faction = current_settings.get('report_faction_filter', '全部')
-                
-                # 只有在不同時才更新
-                if faction != current_faction:
-                    account_settings_manager.account_settings_manager.update_account_settings(
-                        target_account_index, {'report_faction_filter': faction}
-                    )
-            else:
-                # 沒有指定帳號，使用舊方法作為後備
-                from mod.py.account_settings_manager import save_account_settings, get_active_account_settings
-                current_settings = get_active_account_settings()
-                current_faction = current_settings.get('report_faction_filter', '全部')
-                
-                if faction != current_faction:
-                    save_account_settings({'report_faction_filter': faction}, force_update=True)
-                
-            return True
+                account_name = target_account['account']
+            # 直接用 account_name 更新
+            result = account_settings_manager.account_settings_manager.update_account_settings(
+                {'report_faction_filter': faction}, account_name=account_name)
+            return result.get('success', False) if isinstance(result, dict) else bool(result)
         except Exception as e:
-            pass
+            print(f"[save_report_faction_filter] Exception: {e}")
             return False
 
     def get_report_faction_filter(self, target_account=None) -> str:
