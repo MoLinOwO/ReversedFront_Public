@@ -78,7 +78,7 @@ class AccountSettingsManager:
             print(f"釋放檔案鎖失敗: {e}")
 
     def _ensure_config_file(self):
-        """確保配置檔案存在並包含有效結構"""
+        """確保配置檔案存在並包含有效結構，修復時保留其他欄位"""
         if not os.path.exists(self._config_file):
             # 創建新的配置檔案
             self._save_config({'accounts': [], 'active': 0})
@@ -87,11 +87,28 @@ class AccountSettingsManager:
                 # 讀取檔案內容，確認結構正確
                 config = self._read_config(validate=True)
                 if config is None:
-                    # 如果讀取失敗或結構不正確，創建新的
-                    self._save_config({'accounts': [], 'active': 0})
+                    # 如果讀取失敗或結構不正確，合併保留其他欄位
+                    try:
+                        with open(self._config_file, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            original = json.loads(content) if content.strip() else {}
+                    except Exception:
+                        original = {}
+                    original['accounts'] = []
+                    original['active'] = 0
+                    self._save_config(original)
             except Exception as e:
                 print(f"檢查配置檔案失敗: {e}")
-                self._save_config({'accounts': [], 'active': 0})
+                # 失敗時也保留其他欄位
+                try:
+                    with open(self._config_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        original = json.loads(content) if content.strip() else {}
+                except Exception:
+                    original = {}
+                original['accounts'] = []
+                original['active'] = 0
+                self._save_config(original)
 
     def _read_config(self, validate=False):
         """讀取配置檔案
@@ -142,7 +159,16 @@ class AccountSettingsManager:
                     
                     # 如果有修改，保存回檔案
                     if modified:
-                        self._save_config(config)
+                        # 修復時保留其他欄位，只修正 accounts/active
+                        try:
+                            with open(self._config_file, 'r', encoding='utf-8') as f2:
+                                orig_content = f2.read()
+                                original = json.loads(orig_content) if orig_content.strip() else {}
+                        except Exception:
+                            original = {}
+                        original['accounts'] = config['accounts']
+                        original['active'] = config['active']
+                        self._save_config(original)
                 
                 return config
         except Exception as e:
@@ -150,30 +176,51 @@ class AccountSettingsManager:
             return None
 
     def _save_config(self, config):
-        """安全地保存配置到檔案
-        
-        Args:
-            config: 要保存的配置字典
-            
-        Returns:
-            保存是否成功
-        """
+        """保存配置檔案，支援多開安全寫入與自動備份（Windows/Linux 通用）"""
+        import time
+        max_retry = 5
+        retry_delay = 0.15
+        for attempt in range(max_retry):
+            try:
+                # 先備份原始檔案
+                if os.path.exists(self._config_file):
+                    backup_path = self._config_file + '.bak'
+                    shutil.copy2(self._config_file, backup_path)
+            except Exception as e:
+                print(f"備份配置檔案失敗: {e}")
+            tmp_path = self._config_file + '.tmp'
+            try:
+                # 再次讀取最新內容，合併 accounts/active 等欄位，避免 race condition
+                latest = None
+                if os.path.exists(self._config_file):
+                    try:
+                        with open(self._config_file, 'r', encoding='utf-8') as f:
+                            latest = json.load(f)
+                    except Exception:
+                        latest = None
+                if latest:
+                    # 只覆蓋 accounts/active/window_mode 等欄位，其餘保留
+                    for k in config:
+                        latest[k] = config[k]
+                    config_to_write = latest
+                else:
+                    config_to_write = config
+                with open(tmp_path, 'w', encoding='utf-8') as f:
+                    json.dump(config_to_write, f, ensure_ascii=False, indent=2)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_path, self._config_file)
+                return True
+            except Exception as e:
+                print(f"寫入配置檔案失敗（第{attempt+1}次）: {e}")
+                time.sleep(retry_delay)
+        # 寫入失敗時嘗試還原備份
         try:
-            # 使用臨時檔案避免寫入中斷導致檔案損壞
-            temp_file = f"{self._config_file}.tmp"
-            with open(temp_file, 'w', encoding='utf-8') as f:
-                self._get_lock(f, exclusive=True)  # 獨佔鎖用於寫入
-                
-                json.dump(config, f, ensure_ascii=False, indent=2)
-                
-                self._release_lock(f)
-            
-            # 安全地替換檔案
-            shutil.move(temp_file, self._config_file)
-            return True
-        except Exception as e:
-            print(f"保存配置檔案失敗: {e}")
-            return False
+            if os.path.exists(self._config_file + '.bak'):
+                shutil.copy2(self._config_file + '.bak', self._config_file)
+        except Exception as e2:
+            print(f"還原備份失敗: {e2}")
+        return False
 
     def get_accounts(self):
         """獲取所有帳號列表"""

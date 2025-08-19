@@ -52,8 +52,7 @@ export function setupAudioControls(controlsPanel) {
             </div>
         `;
         controlsPanel.appendChild(audioContainer);
-        
-        // 在 DOM 元素創建後立即嘗試同步設定
+        // 在 DOM 元素創建後立即嘗試同步設定（移除同步音量按鈕）
         setTimeout(() => {
             if (!hasSynced) {
                 initialSync();

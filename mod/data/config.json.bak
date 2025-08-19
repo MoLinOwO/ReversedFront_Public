@@ -1,0 +1,27 @@
+{
+  "exe_path": "E:\\moyul\\Desktop\\ReversedFront\\main.py",
+  "accounts": [
+    {
+      "account": "moyulive1825@gmail.com",
+      "password": "a239294400",
+      "settings": {
+        "bgm_volume": 0.08,
+        "se_volume": 0.08,
+        "se147_muted": true,
+        "report_faction_filter": "滿洲"
+      }
+    },
+    {
+      "account": "s70101777@gmail.com",
+      "password": "a239294400",
+      "settings": {
+        "bgm_volume": 0.08,
+        "se_volume": 0.1,
+        "se147_muted": true,
+        "report_faction_filter": "臺灣"
+      }
+    }
+  ],
+  "active": 1,
+  "window_mode": "normal"
+}

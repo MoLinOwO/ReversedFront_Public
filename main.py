@@ -11,7 +11,7 @@ from mod.py.sys_utils import init_app_environment
 init_app_environment()
 
 # 版本與資源配置
-LOCAL_VERSION = "2.6"
+LOCAL_VERSION = "2.7"
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 RESOURCE_SERVER_BASE = "https://media.komisureiya.com/"
 
@@ -76,8 +76,7 @@ def start_main_window() -> None:
     """啟動主視窗"""
     # 建立 API 實例
     api = Api(resource_manager)
-    
-    # GPU 加速與視窗顯示參數設定 - 優化全屏切換
+    # GPU 參數
     gpu_args = [
         '--enable-gpu',
         '--ignore-gpu-blacklist',
@@ -88,8 +87,6 @@ def start_main_window() -> None:
         '--enable-webgl',
         '--disable-features=UseOzonePlatform',
     ]
-
-
     # 依據 config.json 設定 window_mode
     from mod.py.account_settings_manager import AccountSettingsManager
     manager = AccountSettingsManager()
@@ -134,7 +131,7 @@ def start_main_window() -> None:
     window.events.closing += on_closing
     try:
         webview.start(
-            debug=False,
+            debug=False,  # 關閉 F12 開發者工具
             http_server=False,
             gui='cef',
             localization={},
@@ -143,7 +140,7 @@ def start_main_window() -> None:
         )
     except Exception:
         try:
-            webview.start()
+            webview.start(debug=False)
         except Exception:
             pass
 

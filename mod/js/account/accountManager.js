@@ -40,22 +40,24 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             await api.setActiveAccount(parseInt(this.value));
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
-            
-            // 當切換帳號時，重新同步音量設定
+            // 切換帳號時自動同步音量UI（含se147_muted）
             if (window.syncAudioControlsWithConfig && window.pywebview && window.pywebview.api) {
                 try {
                     const accounts = await window.pywebview.api.get_accounts();
                     const accountIdx = parseInt(this.value);
                     if (accounts && accountIdx < accounts.length) {
                         const targetAccount = accounts[accountIdx];
-                        console.log(`切換到帳號 ${targetAccount.account}，開始同步音量設定...`);
-                        
-                        // 使用全局音量同步函數
-                        await window.syncAudioControlsWithConfig(targetAccount);
+                        window.syncAudioControlsWithConfig(targetAccount);
+                    } else {
+                        window.syncAudioControlsWithConfig();
                     }
                 } catch (e) {
-                    console.error('切換帳號時同步音量設定失敗:', e);
+                    window.syncAudioControlsWithConfig();
                 }
+            }
+            // 切換帳號時同步戰報通知過濾 select
+            if (window.syncFactionFilterFromConfig) {
+                setTimeout(window.syncFactionFilterFromConfig, 300);
             }
         };
     });

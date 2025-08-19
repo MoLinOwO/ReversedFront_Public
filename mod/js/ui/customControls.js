@@ -29,11 +29,12 @@ function getCurrentSelectedAccount() {
 async function getCurrentAccountData() {
     const selected = getCurrentSelectedAccount();
     if (!selected) return null;
-    
     try {
         const accounts = await window.pywebview.api.get_accounts();
-        if (accounts && selected.accountIdx < accounts.length) {
-            return accounts[selected.accountIdx];
+        if (accounts && accounts.length > 0) {
+            // 僅用帳號名稱（必要時可加密碼）比對
+            let acc = accounts.find(a => a.account === selected.account);
+            return acc || accounts[0];
         }
     } catch (e) {
         console.error('獲取帳號列表失敗:', e);
@@ -71,18 +72,25 @@ function createFactionFilterDropdown(controlsPanel) {
     controlsPanel.appendChild(container);
 
     // 初始化選項，支援 pywebview 及網頁版
-    async function syncFactionFilterFromConfig() {
+    async function syncFactionFilterFromConfig(retry = 0) {
         if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
             try {
                 // 獲取當前帳號資訊用於多實例隔離
                 const targetAccount = await getCurrentAccountData();
+                if (!targetAccount && retry < 2) {
+                    // 若帳號還沒切好，延遲再試一次，最多 retry 2 次
+                    setTimeout(() => syncFactionFilterFromConfig(retry + 1), 200);
+                    return;
+                }
                 const val = await window.pywebview.api.get_report_faction_filter(targetAccount);
-                
+                // 強制同步 select.value
                 if (val && options.includes(val)) {
                     select.value = val;
                 } else {
                     select.value = '全部';
                 }
+                // 除錯用：印出帳號與 select.value
+                console.log('[帳號切換] 當前帳號:', targetAccount, '戰報通知過濾:', select.value);
                 if (window.updateFactionFilter) window.updateFactionFilter(select.value);
             } catch (e) {
                 console.error('獲取戰報篩選設定失敗:', e);
@@ -95,6 +103,8 @@ function createFactionFilterDropdown(controlsPanel) {
             if (window.updateFactionFilter) window.updateFactionFilter('全部');
         }
     }
+    // 掛到 window 讓外部可呼叫
+    window.syncFactionFilterFromConfig = syncFactionFilterFromConfig;
     window.addEventListener('pywebviewready', syncFactionFilterFromConfig);
     document.addEventListener('DOMContentLoaded', syncFactionFilterFromConfig);
 
@@ -335,45 +345,6 @@ export function setupCustomControls() {
     
     // 戰報通知過濾下拉選單
     createFactionFilterDropdown(controlsPanel);
-    
-    // 添加音量重新同步按鈕 (調試用)
-    if (window.pywebview && !document.getElementById('rf-audio-resync-btn')) {
-        const resyncBtn = document.createElement('button');
-        resyncBtn.id = 'rf-audio-resync-btn';
-        resyncBtn.textContent = '重新同步音量';
-        resyncBtn.style.width = '100%';
-        resyncBtn.style.marginBottom = '10px';
-        resyncBtn.style.background = '#f39c12';
-        resyncBtn.style.color = '#fff';
-        resyncBtn.style.border = 'none';
-        resyncBtn.style.padding = '8px 0';
-        resyncBtn.style.borderRadius = '6px';
-        resyncBtn.style.cursor = 'pointer';
-        resyncBtn.style.fontSize = '0.9em';
-        
-        resyncBtn.onclick = function() {
-            console.log('手動觸發音量重新同步...');
-            if (window.syncAudioControlsWithConfig) {
-                window.syncAudioControlsWithConfig();
-                
-                // 提供視覺反饋
-                resyncBtn.textContent = '同步中...';
-                resyncBtn.disabled = true;
-                setTimeout(() => {
-                    resyncBtn.textContent = '重新同步音量';
-                    resyncBtn.disabled = false;
-                }, 1000);
-            }
-        };
-        
-        // 插入到音量控制區域後面
-        const audioControls = document.getElementById('rf-audio-controls');
-        if (audioControls) {
-            audioControls.appendChild(resyncBtn);
-        } else {
-            controlsPanel.appendChild(resyncBtn);
-        }
-    }
     
         // 添加下載狀態區域（替代按鈕和右下角浮動提示）
     if (controlsPanel && !document.getElementById('rf-download-status-area')) {
