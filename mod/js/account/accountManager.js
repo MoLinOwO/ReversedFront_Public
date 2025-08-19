@@ -2,23 +2,23 @@ import * as api from '../core/api.js';
 import { $ } from '../core/utils.js';
 
 // 帳號管理模組
+
+// 用 window.currentSelectedAccountIdx 儲存目前選取的帳號 index
+if (typeof window.currentSelectedAccountIdx !== 'number') window.currentSelectedAccountIdx = 0;
+
 export async function renderAccountManager(accountSection, autofillActiveAccount) {
     let accounts = [];
-    let activeIdx = 0;
     try {
         accounts = await api.getAccounts();
-        const active = await api.getActiveAccount();
-        if(active && accounts.length) {
-            activeIdx = accounts.findIndex(a => a.account === active.account && a.password === active.password);
-            if(activeIdx < 0) activeIdx = 0;
-        }
     } catch(e) {}
+    // 若目前選取 index 超出範圍，自動歸零
+    if (window.currentSelectedAccountIdx >= accounts.length) window.currentSelectedAccountIdx = 0;
     let html = '';
     html += '<div style="margin-bottom:8px;font-size:1em;">帳號管理</div>';
-    html += '<div id="account-list" style="max-height:120px;overflow-y:auto;margin-bottom:8px;">';
+    html += '<div id="account-list" style="min-height:60px;max-height:120px;overflow-y:auto;margin-bottom:8px;">';
     accounts.forEach((acc, i) => {
         html += `<div style="display:flex;align-items:center;margin-bottom:2px;">
-            <input type="radio" name="account-radio" value="${i}" ${i===activeIdx?'checked':''} style="margin-right:6px;">
+            <input type="radio" name="account-radio" value="${i}" ${i===window.currentSelectedAccountIdx?'checked':''} style="margin-right:6px;">
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${acc.account}</span>
             <button type="button" class="del-account-btn" data-idx="${i}" style="margin-left:6px;background:#333;color:#fff;border:none;border-radius:3px;padding:2px 7px;cursor:pointer;">刪除</button>
         </div>`;
@@ -37,7 +37,7 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
     };
     document.querySelectorAll('input[name="account-radio"]').forEach(radio => {
         radio.onchange = async function() {
-            await api.setActiveAccount(parseInt(this.value));
+            window.currentSelectedAccountIdx = parseInt(this.value);
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
             // 切換帳號時自動同步音量UI（含se147_muted）
@@ -64,6 +64,8 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
     document.querySelectorAll('.del-account-btn').forEach(btn => {
         btn.onclick = async function() {
             await api.deleteAccount(parseInt(this.dataset.idx));
+            // 若刪除的是目前選取的帳號，index 歸零
+            if (window.currentSelectedAccountIdx >= accounts.length - 1) window.currentSelectedAccountIdx = 0;
             renderAccountManager(accountSection, autofillActiveAccount);
         };
     });
@@ -73,6 +75,8 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
         const password = $("#add-password-input").value;
         if(account && password) {
             await api.addAccount({account,password});
+            // 新增帳號後自動選到最後一個
+            window.currentSelectedAccountIdx = accounts.length;
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
         }

@@ -29,13 +29,13 @@ setTimeout(() => {
     const isDesktop = !!window.pywebview;
     // 懸浮按鈕位置：桌面版中央，網頁版左上
     const toggleBtnStyle = isDesktop
-        ? 'position:fixed;top:20%;left:50%;transform:translate(-50%,-50%);'
-        : 'position:fixed;top:16px;left:16px;transform:none;';
+        ? 'position:fixed;top:20%;left:50%;' // 不加 transform
+        : 'position:fixed;top:16px;left:16px;';
     main.insertAdjacentHTML('beforeend', `
     <div id="custom-controls-toggle" aria-label="展開功能選單" style="${toggleBtnStyle}z-index:10000;background:#222c;backdrop-filter:blur(2px);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 12px #000a;">
         <img src="./static/media/logo_monthlycard.fc4baca34b9e97ab8974.png" alt="功能選單" style="width:32px;height:32px;object-fit:contain;"/>
     </div>
-    <div id="custom-controls" style="position:fixed;top:20px;right:20px;z-index:9999;background:rgba(34,34,34,0.82);backdrop-filter:blur(4px);border-radius:10px;padding:20px 18px 16px 18px;box-shadow:0 2px 12px #000a;color:#fff;min-width:220px;max-width:420px;width:90vw;font-family:sans-serif;display:none;transition:transform 0.2s cubic-bezier(.4,2,.6,1);transform-origin:top right;max-height:88vh;overflow:auto;">
+    <div id="custom-controls" style="position:fixed;z-index:9999;background:rgba(34,34,34,0.82);backdrop-filter:blur(4px);border-radius:10px;padding:20px 18px 16px 18px;box-shadow:0 2px 12px #000a;color:#fff;min-width:220px;max-width:420px;font-family:sans-serif;display:none;transition:transform 0.2s cubic-bezier(.4,2,.6,1);max-height:88vh;overflow:auto;">
         <div style="margin-bottom:12px;font-size:1.1em;font-weight:bold;letter-spacing:1px;">功能選單</div>
         ${isDesktop ? `<button id="toggle-fullscreen" aria-label="切換全螢幕/視窗" style="width:100%;margin-bottom:10px;background:#333c;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">切換全螢幕/視窗</button>` : ''}
         <button id="show-portalmap-ranking" aria-label="顯示陣營據點排行榜" style="width:100%;margin-bottom:10px;background:#2a7cff;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">陣營據點排行榜</button>
@@ -55,27 +55,86 @@ setTimeout(() => {
     </div>
     `);
 
-    // 比例縮放功能選單（僅桌面版縮放，手機直接 100%）
+    // 展開 custom-controls 時自動定位在 toggleBtn 旁邊
+    const controls = document.getElementById('custom-controls');
+    const toggleBtn = document.getElementById('custom-controls-toggle');
+    function showCustomControls() {
+        if (!controls || !toggleBtn) return;
+        // 先顯示，等內容渲染後再定位（兩次 rAF 保證內容載入）
+        controls.style.display = '';
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const btnRect = toggleBtn.getBoundingClientRect();
+                // 固定 panelWidth，桌面 320px，手機 96vw
+                let panelWidth = window.innerWidth <= 600 ? Math.floor(window.innerWidth * 0.96) : 320;
+                panelWidth = Math.max(220, Math.min(420, panelWidth));
+                controls.style.width = panelWidth + 'px';
+                controls.style.maxWidth = '420px';
+                controls.style.minWidth = '220px';
+                // 動態定位：預設在圓點右側，若超出則往左，但panelWidth不變
+                let left = btnRect.left + btnRect.width + 12;
+                if (left + panelWidth > window.innerWidth) {
+                    left = btnRect.left - panelWidth - 12;
+                }
+                // 若還是超出，直接貼齊螢幕邊緣
+                left = Math.max(0, Math.min(window.innerWidth - panelWidth, left));
+                let top = btnRect.top;
+                // 若下方空間不足，往上移
+                const panelHeight = Math.min(controls.offsetHeight || 480, window.innerHeight * 0.88);
+                if (top + panelHeight > window.innerHeight) {
+                    top = window.innerHeight - panelHeight - 12;
+                }
+                top = Math.max(0, top);
+                controls.style.left = left + 'px';
+                controls.style.top = top + 'px';
+                controls.style.right = '';
+                controls.style.borderRadius = window.innerWidth <= 600 ? '12px' : '10px';
+            });
+        });
+    }
+    function hideCustomControls() {
+        if (controls) controls.style.display = 'none';
+    }
+    if (toggleBtn && controls) {
+        toggleBtn.addEventListener('click', function() {
+            if (controls.style.display === '' || controls.style.display === 'block') {
+                hideCustomControls();
+            } else {
+                showCustomControls();
+            }
+        });
+    }
+    // 點擊外部自動關閉
+    document.addEventListener('mousedown', function(e) {
+        if (controls && controls.style.display !== 'none' && !controls.contains(e.target) && e.target !== toggleBtn) {
+            hideCustomControls();
+        }
+    });
+
+    // 重構：功能選單縮放與定位，桌面固定寬度，手機自適應
     function scaleCustomControls() {
         const controls = document.getElementById('custom-controls');
         if (!controls) return;
         if (window.innerWidth <= 600) {
-            controls.style.transform = 'scale(1)';
+            // 手機：寬度自適應，左右 2vw，圓角大
             controls.style.width = '96vw';
             controls.style.maxWidth = '96vw';
+            controls.style.minWidth = '0';
             controls.style.left = '2vw';
             controls.style.right = '2vw';
             controls.style.top = '12vw';
             controls.style.borderRadius = '12px';
+            controls.style.transform = 'none';
         } else {
-            const scale = Math.max(0.7, Math.min(1, window.innerWidth / 1280));
-            controls.style.transform = `scale(${scale})`;
-            controls.style.width = '';
+            // 桌面：固定寬度，右上角，圓角小
+            controls.style.width = '320px';
             controls.style.maxWidth = '420px';
+            controls.style.minWidth = '220px';
             controls.style.left = '';
             controls.style.right = '20px';
             controls.style.top = '20px';
             controls.style.borderRadius = '10px';
+            controls.style.transform = 'none';
         }
     }
     window.addEventListener('resize', scaleCustomControls);
@@ -219,16 +278,22 @@ let dragOffsetX = 0;
 let dragOffsetY = 0;
 toggleBtn.addEventListener('mousedown', function(e) {
     isDragging = true;
-    // 以滑鼠點擊位置為圓心
-    dragOffsetX = e.offsetX - toggleBtn.offsetWidth / 2;
-    dragOffsetY = e.offsetY - toggleBtn.offsetHeight / 2;
+    // 以滑鼠點擊位置為左上角
+    dragOffsetX = e.offsetX;
+    dragOffsetY = e.offsetY;
     document.body.style.userSelect = 'none';
 });
 window.addEventListener('mousemove', function(e) {
     if (!isDragging) return;
-    toggleBtn.style.top = `${e.clientY - dragOffsetY}px`;
-    toggleBtn.style.left = `${e.clientX - dragOffsetX}px`;
-    toggleBtn.style.transform = 'translate(-50%,-50%)';
+    const btnW = toggleBtn.offsetWidth;
+    const btnH = toggleBtn.offsetHeight;
+    let newLeft = e.clientX - dragOffsetX;
+    let newTop = e.clientY - dragOffsetY;
+    // 確保整個按鈕都在畫面內
+    newLeft = Math.max(0, Math.min(window.innerWidth - btnW, newLeft));
+    newTop = Math.max(0, Math.min(window.innerHeight - btnH, newTop));
+    toggleBtn.style.left = `${newLeft}px`;
+    toggleBtn.style.top = `${newTop}px`;
 });
 window.addEventListener('mouseup', function() {
     isDragging = false;

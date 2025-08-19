@@ -99,7 +99,7 @@ def start_main_window() -> None:
         'js_api': api,
         'width': 1280,
         'height': 720,
-        'resizable': False,
+        'resizable': True,  # 允許動態調整大小
         'frameless': False,
         'easy_drag': True,
         'fullscreen': fullscreen,
