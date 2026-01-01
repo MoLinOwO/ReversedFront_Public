@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false  # 一個平台失敗不影響其他平台
       matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
+        os: [windows-latest, ubuntu-latest]  # 暫時移除 macOS (PyQt6 不支持)
         python-version: ['3.13']  # Python 3.14 在 GitHub Actions 可能還不穩定
     
     steps:
@@ -52,10 +52,12 @@ jobs:
       uses: ilammy/msvc-dev-cmd@v1
     
     # ==================== macOS 特定設置 ====================
-    - name: (macOS) 準備圖標
-      if: runner.os == 'macOS'
-      run: |
-        echo "macOS 將使用 build.py 自動從 logo.ico 轉換圖標"
+    # 暫時禁用：Nuitka 不支持 PyQt6 on macOS
+    # 將來可改用 PySide6 或手動編譯
+    # - name: (macOS) 準備圖標
+    #   if: runner.os == 'macOS'
+    #   run: |
+    #     echo "macOS 將使用 build.py 自動從 logo.ico 轉換圖標"
     
     # ==================== Linux 特定設置 ====================
     - name: (Linux) 安裝系統依賴
@@ -190,11 +192,23 @@ Filename: "{app}\ReversedFront.exe"; Description: "啟動 ReversedFront"; Flags:
     - name: 創建 Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          artifacts/ReversedFront-Windows-Setup/ReversedFront-Setup.exe
-          artifacts/ReversedFront-macOS/ReversedFront-macOS.dmg
-          artifacts/ReversedFront-Linux/ReversedFront-Linux.AppImage
+        files: |Linux/ReversedFront-Linux.AppImage
         draft: false
+        prerelease: false
+        generate_release_notes: true
+        body: |
+          ## 🎉 ReversedFront v2.8.0
+          
+          ### 📦 下載
+          - **Windows**: ReversedFront-Setup.exe (安裝程序)
+          - **Linux**: ReversedFront-Linux.AppImage (單文件可執行)
+          - **macOS**: 暫不提供自動編譯（PyQt6 限制），請使用 Windows/Linux 版本或等待 PySide6 版本
+          
+          ### ✨ 主要特性
+          - 跨平台支持（Windows, Linux）
+          - Nuitka 原生編譯，性能優異
+          - GPU 硬件加速
+          - 完整的遊戲輔助功能
         prerelease: false
         generate_release_notes: true
       env:
