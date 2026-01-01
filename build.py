@@ -130,6 +130,7 @@ def build_nuitka():
         f'--output-filename={output_name}',
         '--assume-yes-for-downloads',
         '--enable-plugin=pyqt6',
+        '--nowarn-mnemonic=options-nanny',  # 忽略 PyQt6 macOS 警告
         
         # 公司與產品資訊
         '--company-name=ESC',
