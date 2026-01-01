@@ -16,7 +16,7 @@ jobs:
     strategy:
       fail-fast: false  # 一個平台失敗不影響其他平台
       matrix:
-        os: [windows-latest, ubuntu-latest]  # 暫時移除 macOS (PyQt6 不支持)
+        os: [windows-latest, ubuntu-22.04]  # 使用 22.04 以獲得更好的套件相容性
         python-version: ['3.13']  # Python 3.14 在 GitHub Actions 可能還不穩定
     
     steps:
@@ -68,7 +68,7 @@ jobs:
           libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
           libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 \
           libxcb-xfixes0 libxkbcommon-x11-0 \
-          libgl1-mesa-glx libegl1 libxkbcommon0 libdbus-1-3
+          libgl1 libegl1 libxkbcommon0 libdbus-1-3 libglx-mesa0
     
     # ==================== Nuitka 編譯 ====================
     - name: 使用 Nuitka 編譯
