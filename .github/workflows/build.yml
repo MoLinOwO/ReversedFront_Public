@@ -237,7 +237,7 @@ jobs:
       with:
         files: |
           artifacts/ReversedFront-Windows-Setup/ReversedFront-Setup.exe
-          artifacts/ReversedFront-Linux/ReversedFront-Linux.tar.gz
+          artifacts/ReversedFront-Linux/ReversedFront-Linux.deb
         draft: false
         prerelease: false
         generate_release_notes: true
@@ -246,7 +246,7 @@ jobs:
           
           ### 📦 下載
           - **Windows**: ReversedFront-Setup.exe (安裝程序，已數位簽章)
-          - **Linux**: ReversedFront-Linux.tar.gz (壓縮包)
+          - **Linux**: ReversedFront-Linux.deb (Debian 安裝包)
           - **macOS**: 暫不提供（PyQt6 限制）
           
           ### 💡 使用說明
@@ -255,8 +255,9 @@ jobs:
           - 已通過數位簽章驗證
           
           **Linux**:
-          - 解壓: `tar -xzf ReversedFront-Linux.tar.gz`
-          - 執行: `cd ReversedFront-Linux && ./ReversedFront`
+          - 安裝: `sudo dpkg -i ReversedFront-Linux.deb`
+          - 如有依賴問題: `sudo apt-get install -f`
+          - 啟動: 從應用程序選單或執行 `reversedfront`
           
           ### ✨ 主要特性
           - Nuitka 原生編譯，性能優異
