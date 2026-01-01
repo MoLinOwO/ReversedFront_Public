@@ -64,7 +64,10 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         sudo apt-get update
-        sudo apt-get install -y patchelf ccache
+        sudo apt-get install -y patchelf ccache fuse libfuse2 \
+          libegl1-mesa libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+          libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 \
+          libxcb-xfixes0 libxkbcommon-x11-0
     
     # ==================== Nuitka 編譯 ====================
     - name: 使用 Nuitka 編譯
@@ -90,6 +93,8 @@ jobs:
         ArchitecturesInstallIn64BitMode=x64
         PrivilegesRequired=admin
         DisableProgramGroupPage=yes
+        ; SignTool=signtool
+        ; 如需數位簽章，請在 GitHub Secrets 中添加證書
         
         [Files]
         Source: "dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -103,6 +108,21 @@ jobs:
         '@ | Out-File -FilePath "installer.iss" -Encoding UTF8
         
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+    
+    # Windows 數位簽章 (可選 - 需要證書)
+    # - name: (Windows) 數位簽章
+    #   if: runner.os == 'Windows' && secrets.CERTIFICATE_BASE64 != ''
+    #   run: |
+    #     # 解碼證書
+    #     $cert = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_BASE64 }}")
+    #     [IO.File]::WriteAllBytes("cert.pfx", $cert)
+    #     
+    #     # 簽章
+    #     & signtool sign /f cert.pfx /p "${{ secrets.CERTIFICATE_PASSWORD }}" `
+    #       /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
+    #       ReversedFront-Setup.exe
+    #     
+    #     Remove-Item cert.pfx
     
     - name: (macOS) 創建 DMG
       if: runner.os == 'macOS'
@@ -122,37 +142,16 @@ jobs:
     - name: (Linux) 創建 AppImage
       if: runner.os == 'Linux'
       run: |
-        # 安裝 AppImage 工具
-        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-        chmod +x linuxdeploy-x86_64.AppImage
-        
-        # 創建 AppDir
-        mkdir -p AppDir/usr/bin
-        cp -r dist/main.dist/* AppDir/usr/bin/
-        
-        # 創建 desktop 文件
-        mkdir -p AppDir/usr/share/applications
-        cat > AppDir/usr/share/applications/ReversedFront.desktop << EOF
-        [Desktop Entry]
-        Type=Application
-        Name=ReversedFront
-        Exec=ReversedFront
-        Icon=logo
-        Categories=Game;Utility;
-        EOF
-        
-        # 複製圖標
-        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
-        cp logo192.png AppDir/usr/share/icons/hicolor/256x256/apps/logo.png
-        
-        # 創建 AppImage
-        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
-        mv ReversedFront*.AppImage ReversedFront-Linux.AppImage
-    
-    # ==================== 上傳編譯產物 ====================
-    - name: 上傳 Windows 安裝程序
-      if: runner.os == 'Windows'
+        # 直接打包成 tar.gz (AppImage 在 GitHub Actions 環境有兼容問題)
+        mv dist/main.dist dist/ReversedFront-Linux
+        cd dist
+        tar -czf ../ReversedFront-Linux.tar.gz ReversedFront-Linux
+        cd ..壓縮包
+      if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
+      with:
+        name: ReversedFront-Linux
+        path: ReversedFront-Linux.tar.gz
       with:
         name: ReversedFront-Windows-Setup
         path: ReversedFront-Setup.exe
@@ -189,7 +188,7 @@ jobs:
       with:
         files: |
           artifacts/ReversedFront-Windows-Setup/ReversedFront-Setup.exe
-          artifacts/ReversedFront-Linux/ReversedFront-Linux.AppImage
+          artifacts/ReversedFront-Linux/ReversedFront-Linux.tar.gz
         draft: false
         prerelease: false
         generate_release_notes: true
@@ -197,14 +196,24 @@ jobs:
           ## 🎉 ReversedFront v2.8.0
           
           ### 📦 下載
-          - **Windows**: ReversedFront-Setup.exe (安裝程序)
-          - **Linux**: ReversedFront-Linux.AppImage (單文件可執行)
-          - **macOS**: 暫不提供自動編譯（PyQt6 限制），請使用 Windows/Linux 版本或等待 PySide6 版本
+          - **Windows**: ReversedFront-Setup.exe (安裝程序，未簽章)
+          - **Linux**: ReversedFront-Linux.tar.gz (壓縮包)
+          - **macOS**: 暫不提供（PyQt6 限制）
+          
+          ### 💡 使用說明
+          **Windows**:
+          - 執行 ReversedFront-Setup.exe 安裝
+          - 首次運行可能會被 Windows Defender 標記（因為未簽章）
+          - 點擊"更多資訊" → "仍要執行"
+          
+          **Linux**:
+          - 解壓: `tar -xzf ReversedFront-Linux.tar.gz`
+          - 執行: `cd ReversedFront-Linux && ./ReversedFront`
           
           ### ✨ 主要特性
-          - 跨平台支持（Windows, Linux）
           - Nuitka 原生編譯，性能優異
           - GPU 硬件加速
-          - 完整的遊戲輔助功能
+          - 完整遊戲資源打包
+          - 跨平台支持（Windows, Linux）
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
