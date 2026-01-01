@@ -135,19 +135,68 @@ jobs:
         
         rm -rf dmg_temp
     
-    - name: (Linux) 創建 AppImage
+    - name: (Linux) 創建 DEB 安裝包
       if: runner.os == 'Linux'
       run: |
-        # 直接打包成 tar.gz (AppImage 在 GitHub Actions 環境有兼容問題)
-        mv dist/main.dist dist/ReversedFront-Linux
-        cd dist
-        tar -czf ../ReversedFront-Linux.tar.gz ReversedFront-Linux
-        cd ..壓縮包
+        # 創建 DEB 包結構
+        mkdir -p ReversedFront_2.8.0/DEBIAN
+        mkdir -p ReversedFront_2.8.0/opt/reversedfront
+        mkdir -p ReversedFront_2.8.0/usr/share/applications
+        mkdir -p ReversedFront_2.8.0/usr/share/icons/hicolor/256x256/apps
+        
+        # 複製程序文件
+        cp -r dist/main.dist/* ReversedFront_2.8.0/opt/reversedfront/
+        
+        # 創建啟動腳本
+        cat > ReversedFront_2.8.0/opt/reversedfront/reversedfront.sh << 'EOF'
+        #!/bin/bash
+        cd "$(dirname "$0")"
+        ./ReversedFront "$@"
+        EOF
+        chmod +x ReversedFront_2.8.0/opt/reversedfront/reversedfront.sh
+        
+        # 創建 desktop 文件
+        cat > ReversedFront_2.8.0/usr/share/applications/reversedfront.desktop << 'EOF'
+        [Desktop Entry]
+        Type=Application
+        Name=ReversedFront
+        Comment=逆統戰：烽火輔助工具
+        Exec=/opt/reversedfront/reversedfront.sh
+        Icon=reversedfront
+        Terminal=false
+        Categories=Game;Utility;
+        EOF
+        
+        # 複製圖標
+        cp logo192.png ReversedFront_2.8.0/usr/share/icons/hicolor/256x256/apps/reversedfront.png
+        
+        # 創建 control 文件
+        cat > ReversedFront_2.8.0/DEBIAN/control << 'EOF'
+        Package: reversedfront
+        Version: 2.8.0
+        Section: games
+        Priority: optional
+        Architecture: amd64
+        Maintainer: ESC <support@example.com>
+        Description: 逆統戰：烽火輔助工具
+         ReversedFront 是一個跨平台的遊戲輔助工具。
+         使用 Nuitka 原生編譯，性能優異。
+        EOF
+        
+        # 構建 DEB 包
+        dpkg-deb --build ReversedFront_2.8.0
+        mv ReversedFront_2.8.0.deb ReversedFront-Linux.deb
+    
+    - name: 上傳 Linux DEB 安裝包
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
         name: ReversedFront-Linux
-        path: ReversedFront-Linux.tar.gz
+        path: ReversedFront-Linux.deb
+    
+    - name: 上傳 Windows 安裝程序
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
       with:
         name: ReversedFront-Windows-Setup
         path: ReversedFront-Setup.exe
