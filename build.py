@@ -145,10 +145,10 @@ def build_nuitka():
         '--include-data-dir=mod/data=mod/data',
         
         # 包含單獨的資料檔案
-        '--include-data-files=index.html=./',
-        '--include-data-files=manifest.json=./',
-        '--include-data-files=robots.txt=./',
-        '--include-data-files=transporter.html=./',
+        '--include-data-files=index.html=index.html',
+        '--include-data-files=manifest.json=manifest.json',
+        '--include-data-files=robots.txt=robots.txt',
+        '--include-data-files=transporter.html=transporter.html',
     ]
     
     # 平台特定參數
@@ -156,7 +156,6 @@ def build_nuitka():
         nuitka_args.extend([
             '--windows-console-mode=disable',
             '--windows-icon-from-ico=logo.ico',
-            '--include-data-files=logo.ico=./',
         ])
     elif platform_name == 'macos':
         base_macos_args = [
@@ -168,7 +167,6 @@ def build_nuitka():
         if os.path.exists('logo.icns'):
             base_macos_args.extend([
                 '--macos-app-icon=logo.icns',
-                '--include-data-files=logo.icns=./',
             ])
             print("  >> 使用 logo.icns 圖標")
         else:
