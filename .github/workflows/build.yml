@@ -187,7 +187,9 @@ jobs:
     - name: 創建 Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |Linux/ReversedFront-Linux.AppImage
+        files: |
+          artifacts/ReversedFront-Windows-Setup/ReversedFront-Setup.exe
+          artifacts/ReversedFront-Linux/ReversedFront-Linux.AppImage
         draft: false
         prerelease: false
         generate_release_notes: true
@@ -204,7 +206,5 @@ jobs:
           - Nuitka 原生編譯，性能優異
           - GPU 硬件加速
           - 完整的遊戲輔助功能
-        prerelease: false
-        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
