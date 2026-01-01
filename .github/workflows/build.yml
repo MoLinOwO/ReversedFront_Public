@@ -70,47 +70,109 @@ jobs:
       continue-on-error: false
     
     # ==================== 平台特定後處理 ====================
-    - name: (Windows) 重命名輸出
+    - name: (Windows) 創建安裝程序
       if: runner.os == 'Windows'
       run: |
-        Rename-Item -Path "dist\main.dist" -NewName "ReversedFront-Windows"
-        Compress-Archive -Path "dist\ReversedFront-Windows\*" -DestinationPath "ReversedFront-Windows.zip"
+        # 安裝 Inno Setup
+        choco install innosetup -y
+        
+        # 創建安裝腳本
+        $issContent = @"
+[Setup]
+AppName=ReversedFront
+AppVersion=2.8.0
+DefaultDirName={autopf}\ReversedFront
+DefaultGroupName=ReversedFront
+OutputDir=.
+OutputBaseFilename=ReversedFront-Setup
+Compression=lzma2
+SolidCompression=yes
+ArchitecturesInstallIn64BitMode=x64
+PrivilegesRequired=admin
+DisableProgramGroupPage=yes
+LicenseFile=
+UninstallDisplayIcon={app}\ReversedFront.exe
+
+[Files]
+Source: "dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+[Icons]
+Name: "{autoprograms}\ReversedFront"; Filename: "{app}\ReversedFront.exe"
+Name: "{autodesktop}\ReversedFront"; Filename: "{app}\ReversedFront.exe"
+
+[Run]
+Filename: "{app}\ReversedFront.exe"; Description: "啟動 ReversedFront"; Flags: postinstall nowait skipifsilent
+"@
+        
+        $issContent | Out-File -FilePath "installer.iss" -Encoding UTF8
+        & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
     
     - name: (macOS) 創建 DMG
       if: runner.os == 'macOS'
       run: |
-        mv dist/main.dist/ReversedFront.app dist/ReversedFront.app
-        hdiutil create -volname "ReversedFront" -srcfolder dist/ReversedFront.app -ov -format UDZO ReversedFront-macOS.dmg
+        # 創建臨時目錄
+        mkdir -p dmg_temp
+        cp -r dist/main.dist/ReversedFront.app dmg_temp/
+        
+        # 創建 DMG
+        hdiutil create -volname "ReversedFront" \
+          -srcfolder dmg_temp \
+          -ov -format UDZO \
+          ReversedFront-macOS.dmg
+        
+        rm -rf dmg_temp
     
-    - name: (Linux) 打包
+    - name: (Linux) 創建 AppImage
       if: runner.os == 'Linux'
       run: |
-        mv dist/main.dist dist/ReversedFront-Linux
-        cd dist
-        tar -czf ../ReversedFront-Linux.tar.gz ReversedFront-Linux
-        cd ..
+        # 安裝 AppImage 工具
+        wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+        chmod +x linuxdeploy-x86_64.AppImage
+        
+        # 創建 AppDir
+        mkdir -p AppDir/usr/bin
+        cp -r dist/main.dist/* AppDir/usr/bin/
+        
+        # 創建 desktop 文件
+        mkdir -p AppDir/usr/share/applications
+        cat > AppDir/usr/share/applications/ReversedFront.desktop << EOF
+        [Desktop Entry]
+        Type=Application
+        Name=ReversedFront
+        Exec=ReversedFront
+        Icon=logo
+        Categories=Game;Utility;
+        EOF
+        
+        # 複製圖標
+        mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+        cp logo192.png AppDir/usr/share/icons/hicolor/256x256/apps/logo.png
+        
+        # 創建 AppImage
+        ./linuxdeploy-x86_64.AppImage --appdir AppDir --output appimage
+        mv ReversedFront*.AppImage ReversedFront-Linux.AppImage
     
     # ==================== 上傳編譯產物 ====================
-    - name: 上傳 Windows 產物
+    - name: 上傳 Windows 安裝程序
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
-        name: ReversedFront-Windows
-        path: ReversedFront-Windows.zip
+        name: ReversedFront-Windows-Setup
+        path: ReversedFront-Setup.exe
     
-    - name: 上傳 macOS 產物
+    - name: 上傳 macOS DMG
       if: runner.os == 'macOS'
       uses: actions/upload-artifact@v4
       with:
         name: ReversedFront-macOS
         path: ReversedFront-macOS.dmg
     
-    - name: 上傳 Linux 產物
+    - name: 上傳 Linux AppImage
       if: runner.os == 'Linux'
       uses: actions/upload-artifact@v4
       with:
         name: ReversedFront-Linux
-        path: ReversedFront-Linux.tar.gz
+        path: ReversedFront-Linux.AppImage
 
   # ==================== 創建 Release ====================
   release:
@@ -129,9 +191,9 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          artifacts/ReversedFront-Windows/ReversedFront-Windows.zip
+          artifacts/ReversedFront-Windows-Setup/ReversedFront-Setup.exe
           artifacts/ReversedFront-macOS/ReversedFront-macOS.dmg
-          artifacts/ReversedFront-Linux/ReversedFront-Linux.tar.gz
+          artifacts/ReversedFront-Linux/ReversedFront-Linux.AppImage
         draft: false
         prerelease: false
         generate_release_notes: true
