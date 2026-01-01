@@ -75,38 +75,33 @@ jobs:
     - name: (Windows) 創建安裝程序
       if: runner.os == 'Windows'
       run: |
-        # 安裝 Inno Setup
         choco install innosetup -y
         
-        # 創建安裝腳本
-        $issContent = @"
-[Setup]
-AppName=ReversedFront
-AppVersion=2.8.0
-DefaultDirName={autopf}\ReversedFront
-DefaultGroupName=ReversedFront
-OutputDir=.
-OutputBaseFilename=ReversedFront-Setup
-Compression=lzma2
-SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64
-PrivilegesRequired=admin
-DisableProgramGroupPage=yes
-LicenseFile=
-UninstallDisplayIcon={app}\ReversedFront.exe
-
-[Files]
-Source: "dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-[Icons]
-Name: "{autoprograms}\ReversedFront"; Filename: "{app}\ReversedFront.exe"
-Name: "{autodesktop}\ReversedFront"; Filename: "{app}\ReversedFront.exe"
-
-[Run]
-Filename: "{app}\ReversedFront.exe"; Description: "啟動 ReversedFront"; Flags: postinstall nowait skipifsilent
-"@
+        @'
+        [Setup]
+        AppName=ReversedFront
+        AppVersion=2.8.0
+        DefaultDirName={autopf}\ReversedFront
+        DefaultGroupName=ReversedFront
+        OutputDir=.
+        OutputBaseFilename=ReversedFront-Setup
+        Compression=lzma2
+        SolidCompression=yes
+        ArchitecturesInstallIn64BitMode=x64
+        PrivilegesRequired=admin
+        DisableProgramGroupPage=yes
         
-        $issContent | Out-File -FilePath "installer.iss" -Encoding UTF8
+        [Files]
+        Source: "dist\main.dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+        
+        [Icons]
+        Name: "{autoprograms}\ReversedFront"; Filename: "{app}\ReversedFront.exe"
+        Name: "{autodesktop}\ReversedFront"; Filename: "{app}\ReversedFront.exe"
+        
+        [Run]
+        Filename: "{app}\ReversedFront.exe"; Description: "啟動 ReversedFront"; Flags: postinstall nowait skipifsilent
+        '@ | Out-File -FilePath "installer.iss" -Encoding UTF8
+        
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
     
     - name: (macOS) 創建 DMG
