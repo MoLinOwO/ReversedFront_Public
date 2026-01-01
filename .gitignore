@@ -1,11 +1,73 @@
-# 忽略 mod/node_modules 及常見開發暫存檔案
-mod/node_modules/
-mod/node_modules
-node_modules/
-*.log
-.DS_Store
-Thumbs.db
-.env
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# 忽略 Python 打包產物
+# Node.js
+mod/node_modules/
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系統文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# 編譯產物
 Buildexe/
+main.build/
+main.dist/
+*.exe
+*.app
+*.dmg
+*.tar.gz
+*.zip
+
+# 環境變數
+.env
+.env.local
+
+# 日誌
+*.log
+logs/
+
+# 臨時文件
+*.tmp
+*.bak
+*.swp
+*.cache

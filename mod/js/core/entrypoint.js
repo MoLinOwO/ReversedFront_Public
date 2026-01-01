@@ -22,11 +22,12 @@ setTimeout(() => {
 }, 500);
 
 // 動態插入功能選單相關 DOM 結構
-(function insertCustomControlsDOM() {
+function insertCustomControlsDOM() {
     if (document.getElementById('custom-controls-toggle')) return; // 已插入則跳過
     const main = document.querySelector('main') || document.body;
-    // 判斷是否 pywebview
+    // 判斷是否 pywebview（延遲檢查以確保 Qt WebChannel 已注入）
     const isDesktop = !!window.pywebview;
+    console.log('insertCustomControlsDOM: isDesktop =', isDesktop, 'window.pywebview =', !!window.pywebview);
     // 懸浮按鈕位置：桌面版中央，網頁版左上
     const toggleBtnStyle = isDesktop
         ? 'position:fixed;top:20%;left:50%;' // 不加 transform
@@ -37,12 +38,13 @@ setTimeout(() => {
     </div>
     <div id="custom-controls" style="position:fixed;z-index:9999;background:rgba(34,34,34,0.82);backdrop-filter:blur(4px);border-radius:10px;padding:20px 18px 16px 18px;box-shadow:0 2px 12px #000a;color:#fff;min-width:220px;max-width:420px;font-family:sans-serif;display:none;transition:transform 0.2s cubic-bezier(.4,2,.6,1);max-height:88vh;overflow:auto;">
         <div style="margin-bottom:12px;font-size:1.1em;font-weight:bold;letter-spacing:1px;">功能選單</div>
-        ${isDesktop ? `<button id="toggle-fullscreen" aria-label="切換全螢幕/視窗" style="width:100%;margin-bottom:10px;background:#333c;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">切換全螢幕/視窗</button>` : ''}
         <button id="show-portalmap-ranking" aria-label="顯示陣營據點排行榜" style="width:100%;margin-bottom:10px;background:#2a7cff;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">陣營據點排行榜</button>
         <button id="toggle-faction-map" aria-label="顯示勢力分布圖" style="width:100%;margin-bottom:10px;background:#1dbf60;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">顯示勢力分布圖</button>
-        ${isDesktop ? `<button id="exit-app" aria-label="退出遊戲" style="width:100%;margin-bottom:10px;background:#d9534f;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">退出遊戲</button>` : ''}
         <div id="account-section"></div>
         <div id="account-status" style="margin-top:6px;font-size:0.92em;color:#7fffd4;"></div>
+        <!-- 音量控制、戰報過濾、下載狀態將由 setupCustomControls 動態添加 -->
+        <!-- ESC 提示將由 setupCustomControls 動態添加 -->
+        <!-- 桌面專屬按鈕（退出、全螢幕）容器將由 setupCustomControls 創建並在最後添加 -->
     </div>
     <div id="ranking-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:12000;background:none;align-items:center;justify-content:center;pointer-events:auto;overflow:hidden;">
       <div id="ranking-panel" style="background:rgba(30,34,44,0.92);padding:3vw 2vw 2vw 2vw;border-radius:22px;min-width:320px;max-width:96vw;width:min(540px,92vw);max-height:88vh;overflow:auto;box-shadow:0 4px 32px #0008;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;backdrop-filter:blur(6px);pointer-events:auto;cursor:move;">
@@ -139,7 +141,30 @@ setTimeout(() => {
     }
     window.addEventListener('resize', scaleCustomControls);
     scaleCustomControls();
-})();
+}
+
+// 延遲調用 insertCustomControlsDOM，等待 Qt WebChannel 初始化
+// 但要足夠早，讓後續代碼能找到這些 DOM 元素
+let customControlsInserted = false;
+
+// DOMContentLoaded 時插入 DOM（確保在 pywebviewready 之前有基礎 DOM）
+document.addEventListener('DOMContentLoaded', () => {
+    if (!customControlsInserted) {
+        console.log('DOMContentLoaded: 調用 insertCustomControlsDOM');
+        insertCustomControlsDOM();
+        customControlsInserted = true;
+    }
+});
+
+// 如果 DOMContentLoaded 已經觸發，立即執行
+if (document.readyState === 'loading') {
+    // 還在加載中，上面的事件監聽會處理
+} else {
+    // 已經加載完成，立即執行
+    console.log('Document already loaded: 調用 insertCustomControlsDOM');
+    insertCustomControlsDOM();
+    customControlsInserted = true;
+}
 
 import '../audio/globalAudioControl.js';
 import { renderAccountManager, autofillActiveAccount } from '../account/accountManager.js';
@@ -168,17 +193,23 @@ console.log((() => {
 let markerInteractionInitialized = false;
 
 window.addEventListener('pywebviewready', async function() {
+    console.log('pywebviewready 事件觸發, window.pywebview =', !!window.pywebview);
+    
+    // 添加桌面專屬按鈕到最後的容器中
+    if (window.pywebview) {
+        const desktopBtnsContainer = document.getElementById('desktop-buttons-container');
+        if (desktopBtnsContainer && !document.getElementById('exit-app')) {
+            console.log('添加桌面專屬按鈕到容器末尾');
+            desktopBtnsContainer.innerHTML = `
+                <button id="exit-app" aria-label="退出遊戲" style="width:100%;margin-bottom:10px;background:#d9534f;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;margin-top:10px;">退出遊戲</button>
+                <button id="toggle-fullscreen" aria-label="切換全螢幕/視窗" style="width:100%;margin-bottom:0;background:#333c;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">切換全螢幕/視窗</button>
+            `;
+        }
+    }
+    
     // 帳號管理（僅桌面版顯示）
     const accountSection = document.getElementById('account-section');
     if (window.pywebview) {
-        // 桌面專屬按鈕動態插入（將切換全螢幕移到最下方）
-        const controls = document.getElementById('custom-controls');
-        if (controls && !document.getElementById('exit-app')) {
-            controls.insertAdjacentHTML('beforeend', `<button id="exit-app" aria-label="退出遊戲" style="width:100%;margin-bottom:10px;background:#d9534f;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">退出遊戲</button>`);
-        }
-        if (controls && !document.getElementById('toggle-fullscreen')) {
-            controls.insertAdjacentHTML('beforeend', `<button id="toggle-fullscreen" aria-label="切換全螢幕/視窗" style="width:100%;margin-bottom:0;background:#333c;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">切換全螢幕/視窗</button>`);
-        }
         await renderAccountManager(accountSection, autofillActiveAccount);
         autofillActiveAccount();
         

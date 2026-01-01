@@ -3,16 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <link rel="shortcut icon" href="/logo.ico" type="image/x-icon">
-    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,target-densityDpi=device-dpi" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
     <meta name="theme-color" content="#000000" />
     <meta property="title" content="逆統戰：烽火 | Reversed Front"/>
     <meta property="description" content="現代東亞國戰手游《逆統戰：烽火》"/>
     <link rel="apple-touch-icon" href="./logo192.png" />
     <link rel="manifest" href="./manifest.json" />
     <title>逆統戰：烽火</title>
-  <script type="module" src="./static/js/main.bundle.js"></script>
-  <script defer="defer" src="./static/js/main.94fae2cd.js"></script>
     <link href="./static/css/main.f4ae5b14.css" rel="stylesheet" />
+  <!-- Qt WebChannel 必須最先載入 -->
+  <script type="text/javascript" src="qrc:///qtwebchannel/qwebchannel.js"></script>
+  <!-- 影片格式修復腳本 - 在 React 之前注入 -->
+  <script>
+    // 修改 americacover 模組引用，改用 WebM 格式
+    window.__VIDEO_FORMAT_OVERRIDE = {
+      'americacover.030f9ae00ffe0f7411ac.mp4': 'americacover.webm'
+    };
+  </script>
+  <!-- React 應用主文件 -->
+  <script defer="defer" src="./static/js/main.94fae2cd.js"></script>
+  <!-- 自定義功能模組（作為 ES6 模組載入，在 React 之後執行） -->
+  <script type="module" src="./mod/js/main.bundle.js"></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

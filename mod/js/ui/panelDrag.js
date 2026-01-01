@@ -103,23 +103,33 @@ export function setupPanelDrag(controlsPanel, controlsToggle) {
         }
     };
     
-    // 點擊外部區域關閉面板，但不干擾 ESC 按鍵功能 (ESC 由 Python API 控制)
+    // 暴露全局切換函數供 ESC 鍵調用
+    window.toggleControlPanel = function() {
+        if (controlsPanel.style.display === 'none' || !controlsPanel.style.display) {
+            // 展開選單
+            controlsPanel.style.display = 'block';
+            controlsToggle.style.display = 'none';
+            panelState.isOpen = true;
+        } else {
+            // 收合選單
+            controlsPanel.style.display = 'none';
+            controlsToggle.style.display = 'flex';
+            panelState.isOpen = false;
+        }
+        localStorage.setItem('rf_panel_state', JSON.stringify(panelState));
+    };
+    
+    // 點擊外部區域關閉面板
     document.addEventListener('mousedown', function(e) {
         if(controlsPanel.style.display !== 'none' && !controlsPanel.contains(e.target) && !controlsToggle.contains(e.target)) {
             // 檢查是否點擊了其他對話框或特殊元素
             const clickedOnDialog = e.target.closest('.dialog') || e.target.closest('#ranking-modal') || e.target.closest('#faction-map-canvas-container');
             if (!clickedOnDialog) {
-                // 使用通用函數切換控制面板，確保統一行為
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_menu) {
-                    window.pywebview.api.toggle_menu();
-                } else {
-                    // 備用：直接修改DOM
-                    controlsPanel.style.display = 'none';
-                    controlsToggle.style.display = 'flex';
-                    // 更新狀態並保存
-                    panelState.isOpen = false;
-                    localStorage.setItem('rf_panel_state', JSON.stringify(panelState));
-                }
+                // 直接切換面板
+                controlsPanel.style.display = 'none';
+                controlsToggle.style.display = 'flex';
+                panelState.isOpen = false;
+                localStorage.setItem('rf_panel_state', JSON.stringify(panelState));
             }
         }
     });

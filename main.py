@@ -1,153 +1,120 @@
-import os
-"""逆統戰：烽火 - 桌面輔助工具"""
+"""逆統戰：烽火 - 桌面輔助工具
+Python 3.14+ Free-threaded 優化版本
+"""
 
-# 最基本的導入，用於立即禁用輸出
+import os
 import sys
 
-import webview
-from mod.py.sys_utils import init_app_environment
-
-# 初始化應用環境
-init_app_environment()
+from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import Qt
 
 # 版本與資源配置
-LOCAL_VERSION = "2.8"
+LOCAL_VERSION = "2.9"
 CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
 RESOURCE_SERVER_BASE = "https://media.komisureiya.com/"
 
-# 導入主要模組
+# 導入模組
 from mod.py.config_utils import save_exe_path_to_config
 from mod.py.resource_cache import ResourceCacheManager
-from mod.py.auto_update import get_cloud_latest_info, download_and_restart
-from mod.py.resource_interceptor import inject_resource_interceptor
-from mod.py.keyboard_handler import init_keyboard_handler, start_keyboard_handler
 from mod.py.api import Api
-
-# 存儲exe路徑
-save_exe_path_to_config()
-
-# 建立資源緩存管理器實例
-resource_manager = ResourceCacheManager(server_base_url=RESOURCE_SERVER_BASE)
-
-# 初始化帳號設定管理器
-try:
-    from mod.py.account_settings_manager import AccountSettingsManager
-    account_settings_manager_instance = AccountSettingsManager()
-    # 全局變量供 API 使用
-    import mod.py.account_settings_manager as account_settings_manager
-    account_settings_manager.account_settings_manager = account_settings_manager_instance
-except Exception:
-    pass
-
-# 檢查index.html
-
-static_dir = os.path.abspath(os.path.dirname(__file__))
-index_file = os.path.join(static_dir, 'index.html')
-if not os.path.exists(index_file):
-    raise FileNotFoundError('找不到 index.html，請確認檔案存在於同一資料夾')
+from mod.py.http_server import start_http_server
+from mod.py.main_window import MainWindow
+from mod.py.free_threaded_utils import print_threading_info
 
 
-def on_loaded():
+def initialize_app():
+    """初始化應用程序"""
+    print("應用啟動中...")
+    
+    # Free-threaded: 打印線程模式資訊
+    print_threading_info()
+    
+    # 存儲exe路徑
+    save_exe_path_to_config()
+    
+    # 建立資源緩存管理器實例 (Free-threaded 優化版)
+    resource_manager = ResourceCacheManager(server_base_url=RESOURCE_SERVER_BASE)
+    
+    # 初始化帳號設定管理器
     try:
-        window = webview.windows[0]
-        from mod.py.auto_update import try_cleanup_old_exe
-        try_cleanup_old_exe()
-        try:
-            filename, remote_version, download_url = get_cloud_latest_info(CLOUD_PAGE_URL)
-            if remote_version and remote_version != LOCAL_VERSION and download_url:
-                if window.evaluate_js(f'confirm("發現新版本 v{remote_version}，是否下載？")'):
-                    download_and_restart(filename, download_url, window)
-        except Exception:
-            pass
-        inject_resource_interceptor()
-        keyboard_handler = init_keyboard_handler(window)
-        if not start_keyboard_handler():
-            window.evaluate_js("""
-                if (window._rfKeyboardHandler) {
-                    window._rfKeyboardHandler = false;
-                }
-            """)
-            keyboard_handler = init_keyboard_handler(window)
-            start_keyboard_handler()
+        from mod.py.account_settings_manager import AccountSettingsManager
+        account_settings_manager_instance = AccountSettingsManager()
+        import mod.py.account_settings_manager as account_settings_manager
+        account_settings_manager.account_settings_manager = account_settings_manager_instance
     except Exception:
         pass
+    
+    return resource_manager
 
-def start_main_window() -> None:
+
+def start_main_window(api_instance, resource_manager):
     """啟動主視窗"""
-    # 建立 API 實例
-    api = Api(resource_manager)
-    # GPU 參數
-    gpu_args = [
-        '--enable-gpu',
-        '--ignore-gpu-blacklist',
-        '--disable-logging',
-        '--disable-dev-shm-usage',
-        '--gpu-rasterization',
-        '--enable-accelerated-2d-canvas',
-        '--enable-webgl',
-        '--disable-features=UseOzonePlatform',
-    ]
-    # 依據 config.json 設定 window_mode
-    from mod.py.account_settings_manager import AccountSettingsManager
-    manager = AccountSettingsManager()
-    window_mode = manager.get_window_mode()
-    fullscreen = window_mode == "fullscreen"
-    maximized = window_mode == "maximized"
-    window_options = {
-        'title': '逆統戰：烽火',
-        'url': index_file,
-        'js_api': api,
-        'width': 1280,
-        'height': 720,
-        'resizable': True,  # 允許動態調整大小
-        'frameless': False,
-        'easy_drag': True,
-        'fullscreen': fullscreen,
-        'min_size': (800, 600),
-        'maximized': maximized,
-        'confirm_close': False,
-        'text_select': False,
-        'background_color': '#000000'
-    }
-    try:
-        window = webview.create_window(**window_options)
-    except Exception:
-        window = webview.create_window(
-            '逆統戰：烽火',
-            index_file,
-            js_api=api
-        )
+    print("創建 QApplication...")
+    QApplication.setAttribute(Qt.ApplicationAttribute.AA_UseOpenGLES)
+    app = QApplication(sys.argv)
+    
+    # 啟動 HTTP 服務器
+    httpd = start_http_server(8765)
+    
+    print("創建主視窗...")
+    window = MainWindow(api_instance, resource_manager)
+    
+    print("顯示視窗...")
+    window.show()
+    print(f"視窗已顯示: {window.isVisible()}")
+    
+    print("進入事件循環...")
+    exit_code = app.exec()
+    print(f"應用退出，退出碼: {exit_code}")
+    sys.exit(exit_code)
 
-    # 註冊載入完成事件
-    window.events.loaded += on_loaded
-    # 註冊窗口關閉事件
-    def on_closing():
-        from mod.py.keyboard_handler import stop_keyboard_handler
-        stop_keyboard_handler()
-        if resource_manager:
-            resource_manager.shutdown()
-        import gc
-        gc.collect()
-    window.events.closing += on_closing
-    try:
-        webview.start(
-            debug=False,  # 關閉 F12 開發者工具
-            http_server=False,
-            gui='cef',
-            localization={},
-            args=gpu_args,
-            private_mode=False
-        )
-    except Exception:
-        try:
-            webview.start(debug=False)
-        except Exception:
-            pass
 
 if __name__ == "__main__":
+    # 設置 Chromium 參數 - 完全啟用媒體支援與 GPU 加速
+    os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = (
+        '--autoplay-policy=no-user-gesture-required '
+        '--enable-features=VaapiVideoDecoder '
+        '--disable-features=UseChromeOSDirectVideoDecoder '
+        '--enable-accelerated-mjpeg-decode '
+        '--enable-gpu-rasterization '
+        '--ignore-gpu-blocklist '
+        '--disable-software-rasterizer '
+        '--enable-zero-copy '
+        '--enable-accelerated-video-decode '
+        '--enable-accelerated-2d-canvas '
+        '--disable-gpu-driver-bug-workarounds '
+        '--enable-webgl '
+        '--enable-webgl2-compute-context '
+        '--num-raster-threads=4 '
+    )
+    
+    print("=" * 50)
+    print("逆統戰：烽火 - 啟動中...")
+    print("=" * 50)
+    
     try:
+        print("1. 初始化帳號文件...")
         from mod.py.account_settings_manager import ensure_account_file
         ensure_account_file()
-        start_main_window()
-    except Exception:
-        sys.exit(0)
+        print("   ✓ 完成")
+        
+        print("2. 初始化應用...")
+        resource_manager = initialize_app()
+        api_instance = Api(resource_manager)
+        print("   ✓ 完成")
+        
+        print("3. 啟動主視窗...")
+        start_main_window(api_instance, resource_manager)
+        
+    except Exception as e:
+        import traceback
+        print("\n" + "=" * 50)
+        print("✗ 應用啟動失敗")
+        print("=" * 50)
+        print(f"錯誤: {e}")
+        print("\n詳細錯誤信息:")
+        traceback.print_exc()
+        print("\n" + "=" * 50)
+        input("\n按 Enter 鍵退出...")
+        sys.exit(1)
+

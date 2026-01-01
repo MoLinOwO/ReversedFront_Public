@@ -3,13 +3,13 @@
 
 const factionColorMap = [
   { name: '蒙古', color: 'rgb(0, 138, 247)' },
-  { name: '臺灣', color: 'rgb(7, 162, 188)' },
+  { name: '臺灣', color: 'rgb(6, 133, 158)' },  // 更新為實際顏色
   { name: '滿洲', color: 'rgb(252, 185, 0)' },
   { name: '香港', color: 'rgb(174, 67, 236)' },
   { name: '反賊聯盟', color: 'rgb(255, 255, 255)' },
   { name: '藏國', color: 'rgb(70, 190, 127)' },
   { name: '維吾爾', color: 'rgb(116, 160, 246)' },
-  { name: '哈薩克', color: 'rgb(0, 205, 197)' },
+  { name: '哈薩克', color: 'rgb(0, 233, 228)' },  // 更新為實際顏色
   { name: '紅軍', color: 'rgb(253, 30, 25)' },
   { name: '新中國狂歡', color: 'rgb(109, 109, 109)' }
 ];
@@ -48,9 +48,27 @@ function normalizeColor(color) {
 }
 
 function getFactionByColor(color) {
+  if (!color) return '未知';
+  
   color = normalizeColor(color);
   color = color.replace(/\s+/g, '');
-  const found = factionColorMap.find(f => f.color.replace(/\s+/g, '') === color);
+  
+  // 先嘗試精確匹配（去除空格）
+  let found = factionColorMap.find(f => f.color.replace(/\s+/g, '') === color);
+  
+  // 如果沒找到，嘗試模糊匹配（處理 rgb(7,162,188) vs rgb(7, 162, 188) 的差異）
+  if (!found) {
+    const match = color.match(/rgb\((\d+),(\d+),(\d+)\)/);
+    if (match) {
+      const r = parseInt(match[1]), g = parseInt(match[2]), b = parseInt(match[3]);
+      found = factionColorMap.find(f => {
+        const m = f.color.replace(/\s+/g, '').match(/rgb\((\d+),(\d+),(\d+)\)/);
+        if (!m) return false;
+        return parseInt(m[1]) === r && parseInt(m[2]) === g && parseInt(m[3]) === b;
+      });
+    }
+  }
+  
   return found ? found.name : '未知';
 }
 

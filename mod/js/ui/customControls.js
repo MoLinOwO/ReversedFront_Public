@@ -55,31 +55,179 @@ async function getCurrentAccountData() {
 function createFactionFilterDropdown(controlsPanel) {
     if (document.getElementById('rf-faction-filter')) return;
     const container = document.createElement('div');
-    container.style.marginBottom = '12px';
+    container.style.cssText = 'margin-bottom: 12px; position: relative; display: flex; align-items: center;';
+    
     const label = document.createElement('label');
     label.textContent = '戰報通知過濾：';
-    label.style.marginRight = '8px';
-    label.htmlFor = 'rf-faction-filter';
-    const select = document.createElement('select');
-    select.id = 'rf-faction-filter';
-    select.style.padding = '2px 8px';
-    select.style.borderRadius = '6px';
-    select.style.fontSize = '0.95em';
-    select.style.background = '#222';
-    select.style.color = '#fff';
-    select.style.border = '1px solid #555';
-    select.style.marginLeft = '2px';
+    label.style.cssText = 'margin-right: 8px; flex-shrink: 0;';
+    
+    // 使用自定義下拉選單替代 select 元素
+    const customSelect = document.createElement('div');
+    customSelect.id = 'rf-faction-filter';
+    customSelect.tabIndex = 0;
+    customSelect.style.cssText = `
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.95em;
+        background: #222;
+        color: #fff;
+        border: 1px solid #555;
+        margin-left: 2px;
+        position: relative;
+        pointer-events: auto;
+        cursor: pointer;
+        outline: none;
+        min-width: 100px;
+        user-select: none;
+    `;
+    
+    const displayText = document.createElement('span');
+    displayText.textContent = '全部';
+    displayText.style.cssText = 'display: block;';
+    customSelect.appendChild(displayText);
+    
+    const dropdown = document.createElement('div');
+    dropdown.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: #222;
+        border: 1px solid #555;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        display: none;
+        z-index: 1000;
+        margin-top: -1px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    `;
+    
     const factions = getAllFactions().map(f => f.name);
     const options = ['全部', ...factions.filter(f => f !== '新中國狂歡')];
-    for (const name of options) {
-        const opt = document.createElement('option');
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-    }
+    
+    let selectedValue = '全部';
+    
+    options.forEach(name => {
+        const option = document.createElement('div');
+        option.textContent = name;
+        option.dataset.value = name;
+        option.style.cssText = `
+            padding: 6px 8px;
+            cursor: pointer;
+            color: #fff;
+            transition: background-color 0.15s;
+        `;
+        
+        option.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#3a3a3a';
+        });
+        
+        option.addEventListener('mouseleave', function() {
+            if (this.dataset.value !== selectedValue) {
+                this.style.backgroundColor = '';
+            }
+        });
+        
+        option.addEventListener('click', function(e) {
+            e.stopPropagation();
+            selectedValue = this.dataset.value;
+            displayText.textContent = selectedValue;
+            dropdown.style.display = 'none';
+            customSelect.style.borderRadius = '6px';
+            
+            // 更新選中狀態
+            Array.from(dropdown.children).forEach(opt => {
+                opt.style.backgroundColor = opt.dataset.value === selectedValue ? '#3a3a3a' : '';
+            });
+            
+            // 觸發 change 事件
+            handleFilterChange(selectedValue);
+        });
+        
+        dropdown.appendChild(option);
+    });
+    
+    customSelect.appendChild(dropdown);
+    
+    // 點擊顯示/隱藏下拉選單
+    customSelect.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const isVisible = dropdown.style.display === 'block';
+        dropdown.style.display = isVisible ? 'none' : 'block';
+        customSelect.style.borderRadius = isVisible ? '6px' : '6px 6px 0 0';
+    });
+    
+    // 點擊外部關閉下拉選單
+    document.addEventListener('click', function() {
+        dropdown.style.display = 'none';
+        customSelect.style.borderRadius = '6px';
+    });
+    
+    // 鍵盤支持
+    customSelect.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const isVisible = dropdown.style.display === 'block';
+            dropdown.style.display = isVisible ? 'none' : 'block';
+            customSelect.style.borderRadius = isVisible ? '6px' : '6px 6px 0 0';
+        } else if (e.key === 'Escape') {
+            dropdown.style.display = 'none';
+            customSelect.style.borderRadius = '6px';
+        }
+    });
+    
+    // 懸停效果
+    customSelect.addEventListener('mouseenter', function() {
+        if (dropdown.style.display !== 'block') {
+            this.style.borderColor = '#777';
+            this.style.backgroundColor = '#2a2a2a';
+        }
+    });
+    
+    customSelect.addEventListener('mouseleave', function() {
+        if (dropdown.style.display !== 'block') {
+            this.style.borderColor = '#555';
+            this.style.backgroundColor = '#222';
+        }
+    });
+    
+    // 保存值獲取函數
+    customSelect.getValue = () => selectedValue;
+    customSelect.setValue = (value) => {
+        if (options.includes(value)) {
+            selectedValue = value;
+            displayText.textContent = value;
+            Array.from(dropdown.children).forEach(opt => {
+                opt.style.backgroundColor = opt.dataset.value === selectedValue ? '#3a3a3a' : '';
+            });
+        }
+    };
+    
     container.appendChild(label);
-    container.appendChild(select);
+    container.appendChild(customSelect);
     controlsPanel.appendChild(container);
+
+    container.appendChild(label);
+    container.appendChild(customSelect);
+    controlsPanel.appendChild(container);
+
+    // 處理值變更
+    async function handleFilterChange(value) {
+        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_report_faction_filter) {
+            try {
+                // 獲取當前帳號資訊用於多實例隔離
+                const targetAccount = await getCurrentAccountData();
+                console.log('[rf-faction-filter] 觸發 save_report_faction_filter:', value, targetAccount);
+                const result = await window.pywebview.api.save_report_faction_filter(value, targetAccount);
+                console.log('[rf-faction-filter] save_report_faction_filter 回傳:', result);
+            } catch (e) {
+                console.error('保存戰報篩選設定失敗:', e);
+            }
+        } else {
+            console.warn('[rf-faction-filter] pywebview API 不存在，未呼叫 save_report_faction_filter');
+        }
+        if (window.updateFactionFilter) window.updateFactionFilter(value);
+    }
 
     // 初始化選項，支援 pywebview 及網頁版
     async function syncFactionFilterFromConfig(retry = 0) {
@@ -93,23 +241,23 @@ function createFactionFilterDropdown(controlsPanel) {
                     return;
                 }
                 const val = await window.pywebview.api.get_report_faction_filter(targetAccount);
-                // 強制同步 select.value
+                // 強制同步值
                 if (val && options.includes(val)) {
-                    select.value = val;
+                    customSelect.setValue(val);
                 } else {
-                    select.value = '全部';
+                    customSelect.setValue('全部');
                 }
-                // 除錯用：印出帳號與 select.value
-                console.log('[帳號切換] 當前帳號:', targetAccount, '戰報通知過濾:', select.value);
-                if (window.updateFactionFilter) window.updateFactionFilter(select.value);
+                // 除錯用：印出帳號與值
+                console.log('[帳號切換] 當前帳號:', targetAccount, '戰報通知過濾:', customSelect.getValue());
+                if (window.updateFactionFilter) window.updateFactionFilter(customSelect.getValue());
             } catch (e) {
                 console.error('獲取戰報篩選設定失敗:', e);
-                select.value = '全部';
+                customSelect.setValue('全部');
                 if (window.updateFactionFilter) window.updateFactionFilter('全部');
             }
         } else {
             // 網頁版：預設為全部
-            select.value = '全部';
+            customSelect.setValue('全部');
             if (window.updateFactionFilter) window.updateFactionFilter('全部');
         }
     }
@@ -139,24 +287,6 @@ function createFactionFilterDropdown(controlsPanel) {
         }
     }
     setupAccountChangeListener();
-
-    // 監聽變更
-    select.addEventListener('change', async function() {
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_report_faction_filter) {
-            try {
-                // 獲取當前帳號資訊用於多實例隔離
-                const targetAccount = await getCurrentAccountData();
-                console.log('[rf-faction-filter] 觸發 save_report_faction_filter:', this.value, targetAccount);
-                const result = await window.pywebview.api.save_report_faction_filter(this.value, targetAccount);
-                console.log('[rf-faction-filter] save_report_faction_filter 回傳:', result);
-            } catch (e) {
-                console.error('保存戰報篩選設定失敗:', e);
-            }
-        } else {
-            console.warn('[rf-faction-filter] pywebview API 不存在，未呼叫 save_report_faction_filter');
-        }
-        if (window.updateFactionFilter) window.updateFactionFilter(this.value);
-    });
 }
 
 // 保留一些通用樣式以支援對話框功能
@@ -350,9 +480,13 @@ export function setupCustomControls() {
         setTimeout(() => floatingEscHint.remove(), 1000);
     }, 5000);
 
-    // 退出遊戲按鈕
-    const exitBtn = getDomOrWarn('exit-app');
-    if (exitBtn) exitBtn.onclick = loadExitPromptsAndShow;
+    // 退出遊戲按鈕（可能在 pywebviewready 後才添加，延遲綁定）
+    setTimeout(() => {
+        const exitBtn = document.getElementById('exit-app');
+        if (exitBtn) {
+            exitBtn.onclick = loadExitPromptsAndShow;
+        }
+    }, 100);
 
     // 勢力分布圖開關
     const factionMapBtn = document.getElementById('toggle-faction-map');
@@ -505,8 +639,6 @@ export function setupCustomControls() {
         });
     }
     
-    // 關於按鈕已移除
-    
     // 添加ESC鍵提示
     if (controlsPanel && !document.getElementById('rf-esc-hint')) {
         const escHint = document.createElement('div');
@@ -517,6 +649,13 @@ export function setupCustomControls() {
         escHint.style.textAlign = 'center';
         escHint.style.marginTop = '10px';
         controlsPanel.appendChild(escHint);
+    }
+    
+    // 添加桌面專屬按鈕容器（在所有其他元素之後）
+    if (controlsPanel && !document.getElementById('desktop-buttons-container')) {
+        const desktopBtnsContainer = document.createElement('div');
+        desktopBtnsContainer.id = 'desktop-buttons-container';
+        controlsPanel.appendChild(desktopBtnsContainer);
     }
     
     // 確保對話框樣式已添加

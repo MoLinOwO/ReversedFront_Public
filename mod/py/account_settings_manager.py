@@ -44,6 +44,8 @@ class AccountSettingsManager:
         from .config_utils import get_hidden_config_dir
         self._config_file = os.path.join(get_hidden_config_dir("data"), 'config.json')
         self._config_cache = None
+        self._cache_time = 0
+        self._write_failed_count = 0
         self._has_fcntl = False
         # 檢查是否支援檔案鎖定
         try:
@@ -119,6 +121,12 @@ class AccountSettingsManager:
         Returns:
             配置數據字典，如果讀取失敗返回 None
         """
+        import time
+        
+        # 如果緩存有效（1秒內），直接返回緩存
+        if self._config_cache and (time.time() - self._cache_time) < 1.0:
+            return self._config_cache
+        
         if not os.path.exists(self._config_file):
             return None
             
@@ -133,6 +141,9 @@ class AccountSettingsManager:
                     return None
                     
                 config = json.loads(content)
+                # 更新緩存
+                self._config_cache = config
+                self._cache_time = time.time()
                 
                 # 驗證並修復結構
                 if validate:
@@ -176,51 +187,64 @@ class AccountSettingsManager:
             return None
 
     def _save_config(self, config):
-        """保存配置檔案，支援多開安全寫入與自動備份（Windows/Linux 通用）"""
+        """保存配置檔案，直接寫入方式避免權限問題"""
         import time
-        max_retry = 5
-        retry_delay = 0.15
-        for attempt in range(max_retry):
-            try:
-                # 先備份原始檔案
-                if os.path.exists(self._config_file):
+        
+        # 更新緩存
+        self._config_cache = config
+        self._cache_time = time.time()
+        
+        try:
+            # 先備份原始檔案
+            if os.path.exists(self._config_file):
+                try:
                     backup_path = self._config_file + '.bak'
                     shutil.copy2(self._config_file, backup_path)
-            except Exception as e:
-                print(f"備份配置檔案失敗: {e}")
-            tmp_path = self._config_file + '.tmp'
+                except:
+                    pass
+            
+            # 再次讀取最新內容，合併欄位避免覆蓋其他配置
+            latest = None
+            if os.path.exists(self._config_file):
+                try:
+                    with open(self._config_file, 'r', encoding='utf-8') as f:
+                        latest = json.load(f)
+                except Exception:
+                    latest = None
+            
+            if latest:
+                # 只覆蓋 accounts/active/window_mode 等欄位，其餘保留
+                for k in config:
+                    latest[k] = config[k]
+                config_to_write = latest
+            else:
+                config_to_write = config
+            
+            # 直接寫入，避免臨時文件重命名的權限問題
+            with open(self._config_file, 'w', encoding='utf-8') as f:
+                json.dump(config_to_write, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            
+            self._write_failed_count = 0
+            return True
+            
+        except Exception as e:
+            # 只在前3次失敗時打印
+            self._write_failed_count += 1
+            if self._write_failed_count <= 3:
+                print(f"配置寫入失敗（第{self._write_failed_count}次）: {e}")
+            elif self._write_failed_count == 4:
+                print(f"配置寫入持續失敗，後續錯誤將被靜默處理")
+            
+            # 嘗試還原備份
             try:
-                # 再次讀取最新內容，合併 accounts/active 等欄位，避免 race condition
-                latest = None
-                if os.path.exists(self._config_file):
-                    try:
-                        with open(self._config_file, 'r', encoding='utf-8') as f:
-                            latest = json.load(f)
-                    except Exception:
-                        latest = None
-                if latest:
-                    # 只覆蓋 accounts/active/window_mode 等欄位，其餘保留
-                    for k in config:
-                        latest[k] = config[k]
-                    config_to_write = latest
-                else:
-                    config_to_write = config
-                with open(tmp_path, 'w', encoding='utf-8') as f:
-                    json.dump(config_to_write, f, ensure_ascii=False, indent=2)
-                    f.flush()
-                    os.fsync(f.fileno())
-                os.replace(tmp_path, self._config_file)
-                return True
-            except Exception as e:
-                print(f"寫入配置檔案失敗（第{attempt+1}次）: {e}")
-                time.sleep(retry_delay)
-        # 寫入失敗時嘗試還原備份
-        try:
-            if os.path.exists(self._config_file + '.bak'):
-                shutil.copy2(self._config_file + '.bak', self._config_file)
-        except Exception as e2:
-            print(f"還原備份失敗: {e2}")
-        return False
+                if os.path.exists(self._config_file + '.bak'):
+                    shutil.copy2(self._config_file + '.bak', self._config_file)
+            except:
+                pass
+            
+            return False
 
     def get_accounts(self):
         """獲取所有帳號列表"""

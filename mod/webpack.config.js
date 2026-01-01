@@ -4,8 +4,9 @@ module.exports = {
   entry: './js/index.js',
   output: {
     filename: 'main.bundle.js',
-    path: path.resolve(__dirname, '../static/js'),
-    clean: true
+    path: path.resolve(__dirname, 'js'),
+    clean: false,
+    publicPath: './mod/js/'
   },
   mode: 'production',
   module: {

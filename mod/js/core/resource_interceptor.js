@@ -103,36 +103,9 @@
         configurable: true
     });
     
-    // 監控視頻元素加載
-    const originalVideoSrc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
-    Object.defineProperty(HTMLMediaElement.prototype, 'src', {
-        get: function() {
-            return originalVideoSrc.get.call(this);
-        },
-        set: function(url) {
-            // 檢查是否是 passionfruit 資源
-            const resourcePathMatch = url.match(/\/(assets\/passionfruit\/|passionfruit\/)(.+)$/);
-            if (resourcePathMatch) {
-                const resourcePath = resourcePathMatch[1] + resourcePathMatch[2];
-                
-                // 異步檢查資源
-                window.pywebview.api.check_resource_exists(resourcePath)
-                    .then(checkResult => {
-                        if (window.DEBUG_MODE) {
-                            console.log(`[ResourceCache] Media 檢查資源: ${resourcePath}, 結果:`, checkResult);
-                        }
-                    })
-                    .catch(err => {
-                        // 只在確實有錯誤時輸出日誌
-                        console.error(`[ResourceCache] Media 檢查資源失敗:`, err);
-                    });
-            }
-            
-            // 設置原始 src
-            originalVideoSrc.set.call(this, url);
-        },
-        configurable: true
-    });
+    // 移除 HTMLMediaElement 的攔截器，避免與 globalAudioControl.js 衝突
+    // globalAudioControl.js 已經處理了音訊和影片的 src 設置
+    // 這裡只監控圖片資源即可
     // 資源下載狀態已整合到左側控制面板，無需獨立的狀態指示器
     
     // 添加全局調試變數

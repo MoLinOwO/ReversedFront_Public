@@ -101,9 +101,240 @@
 - 支援 GPU 加速的顯示卡（建議 DirectX 11 兼容）
 - 網路連線
 
-## 打包與簽章指令（2025/07 更新）
+## 跨平台打包指南（Nuitka）
 
-## 發佈與打包完整流程
+### 為什麼選擇 Nuitka？
+- ✅ **安全性高**：編譯成原生機器碼，極難被反向工程
+- ✅ **性能優越**：比 PyInstaller 快 2-4 倍，啟動時間減少 60%
+- ✅ **體積更小**：優化編譯，執行檔體積減少 30-50%
+- ✅ **跨平台**：支援 Windows、macOS、Linux 原生編譯
+- ❌ **PyInstaller 不推薦**：容易被反向工程，安全性低
+
+### 環境準備
+
+#### Windows
+```powershell
+# 安裝 Nuitka
+pip install nuitka
+
+# 安裝 C 編譯器（選擇其一）
+# 方法 1: Visual Studio 2022 Community（推薦）
+# 方法 2: MinGW-w64
+winget install -e --id=Kitware.CMake
+```
+
+#### macOS
+```bash
+# 安裝 Xcode Command Line Tools
+xcode-select --install
+
+# 安裝 Nuitka
+pip3 install nuitka
+
+# （可選）創建 .icns 圖標
+# 使用 Icon Composer 或線上工具將 logo.png 轉換為 logo.icns
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+# 安裝依賴
+sudo apt update
+sudo apt install python3-dev gcc patchelf ccache
+
+# 安裝 Nuitka
+pip3 install nuitka
+```
+
+### 快速打包
+
+#### 方法 1: 使用自動化腳本（推薦）
+
+**Windows:**
+```powershell
+.\build.bat
+```
+
+**macOS/Linux:**
+```bash
+chmod +x build.sh
+./build.sh
+```
+
+#### 方法 2: 使用 Python 腳本
+```bash
+# 清理舊檔案並重新編譯
+python build.py --clean
+
+# 僅編譯（不清理）
+python build.py
+```
+
+### 手動打包流程
+
+#### 步驟 1: 前端 JS 打包
+```bash
+cd mod
+npm install
+npx webpack --mode production
+cd ..
+```
+
+#### 步驟 2: Nuitka 編譯
+
+**Windows:**
+```powershell
+python -m nuitka --standalone --output-dir=dist `
+  --output-filename=ReversedFront.exe `
+  --windows-console-mode=disable `
+  --windows-icon-from-ico=logo.ico `
+  --assume-yes-for-downloads `
+  --enable-plugin=pyqt6 `
+  --company-name="ESC" `
+  --product-name="ReversedFront" `
+  --file-version=2.8.0.0 `
+  --include-data-dir=mod/py=mod/py `
+  --include-data-dir=static=static `
+  --include-data-dir=tiles=tiles `
+  --include-data-files=index.html=./ `
+  --include-data-files=manifest.json=./ `
+  main.py
+```
+
+**macOS:**
+```bash
+python3 -m nuitka --standalone --output-dir=dist \
+  --output-filename=ReversedFront.app \
+  --macos-create-app-bundle \
+  --macos-app-icon=logo.icns \
+  --assume-yes-for-downloads \
+  --enable-plugin=pyqt6 \
+  --company-name="ESC" \
+  --product-name="ReversedFront" \
+  --include-data-dir=mod/py=mod/py \
+  --include-data-dir=static=static \
+  --include-data-files=index.html=./ \
+  main.py
+```
+
+**Linux:**
+```bash
+python3 -m nuitka --standalone --output-dir=dist \
+  --output-filename=ReversedFront \
+  --linux-icon=logo.png \
+  --assume-yes-for-downloads \
+  --enable-plugin=pyqt6 \
+  --company-name="ESC" \
+  --product-name="ReversedFront" \
+  --include-data-dir=mod/py=mod/py \
+  --include-data-dir=static=static \
+  --include-data-files=index.html=./ \
+  main.py
+```
+
+### 平台特定發布
+
+#### Windows: 創建安裝包
+
+1. **數位簽章**（可選但推薦）:
+```powershell
+signtool sign /f "mod\data\ReversedFront.pfx" `
+  /p YOUR_PASSWORD `
+  /tr http://timestamp.digicert.com `
+  /td sha256 /fd sha256 `
+  "dist\main.dist\ReversedFront.exe"
+```
+
+2. **使用 Inno Setup 創建安裝包**:
+   - 打開 Inno Setup
+   - 來源資料夾: `dist\main.dist\`
+   - 輸出名稱: `ReversedFront-Setup.exe`
+   - 設定圖標: `logo.ico`
+
+#### macOS: 創建 DMG
+
+```bash
+# 簽章應用（需要 Apple Developer ID）
+codesign --deep --force --sign "Developer ID Application: YOUR_NAME" \
+  dist/main.dist/ReversedFront.app
+
+# 創建 DMG 映像檔
+hdiutil create -volname "ReversedFront" \
+  -srcfolder dist/main.dist/ReversedFront.app \
+  -ov -format UDZO \
+  ReversedFront.dmg
+
+# 簽章 DMG
+codesign --sign "Developer ID Application: YOUR_NAME" ReversedFront.dmg
+```
+
+#### Linux: 創建 AppImage 或套件
+
+**方法 1: AppImage**
+```bash
+# 下載 appimagetool
+wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+chmod +x appimagetool-x86_64.AppImage
+
+# 創建 AppImage
+./appimagetool-x86_64.AppImage dist/main.dist/ ReversedFront-x86_64.AppImage
+```
+
+**方法 2: .deb 套件**
+```bash
+# 使用 fpm
+gem install fpm
+fpm -s dir -t deb -n reversedfront -v 2.8.0 \
+  --prefix /opt/reversedfront \
+  dist/main.dist/
+```
+
+### 編譯優化參數
+
+針對不同需求可添加以下參數：
+
+```bash
+# 最小化體積
+--remove-output  # 移除編譯中間檔案
+
+# 最佳化性能
+--lto=yes  # 啟用 Link Time Optimization
+
+# 加快編譯速度
+--jobs=8  # 使用 8 個 CPU 核心並行編譯
+
+# 除錯模式
+--debug  # 保留除錯符號
+--debugger  # 啟用除錯器支援
+```
+
+### 常見問題
+
+**Q: Nuitka 編譯很慢？**
+A: 首次編譯會下載依賴，約需 10-20 分鐘。後續編譯使用 `--jobs=N` 加速。
+
+**Q: PyQt6 找不到？**
+A: 確認已安裝：`pip install PyQt6 PyQt6-WebEngine`
+
+**Q: macOS 無法開啟應用？**
+A: 系統設定 → 隱私權與安全性 → 允許來自任何來源，或進行簽章。
+
+**Q: Linux 缺少 .so 檔案？**
+A: 安裝 `patchelf`：`sudo apt install patchelf`
+
+### 打包檢查清單
+
+- [ ] 前端 JS 已打包（`static/js/main.bundle.js` 存在）
+- [ ] Python 依賴已安裝（`pip install -r requirements.txt`）
+- [ ] 圖標檔案已準備（Windows: .ico, macOS: .icns, Linux: .png）
+- [ ] 版本號已更新（`build.py` 中的 `file-version`）
+- [ ] 資源檔案完整（`mod/data/*.yaml` 等）
+- [ ] （Windows）已進行數位簽章
+- [ ] （macOS）已進行代碼簽章
+- [ ] 測試打包後的應用是否正常運行
+
+## 發佈與打包完整流程（已棄用 PyInstaller）
+
+**⚠️ 注意：不再使用 PyInstaller，請使用上方的 Nuitka 打包流程**
 
 ### 1. 前端 JS 打包（Webpack）
 

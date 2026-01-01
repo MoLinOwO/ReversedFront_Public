@@ -1,10 +1,9 @@
 import os
 """
 API 接口類模塊
-提供給 WebView 的 JS API 接口
+提供給前端的 API 接口
 """
 
-import webview
 from typing import Any, Dict, Optional
 
 # 導入其他模塊
@@ -41,10 +40,6 @@ class Api:
     def set_window_size(self, width: int, height: int) -> bool:
         """設置窗口固定大小"""
         try:
-            if not webview.windows:
-                return False
-            
-            window = webview.windows[0]
             # 確保數值有效
             if not isinstance(width, int) or not isinstance(height, int):
                 width = 1280
@@ -56,13 +51,11 @@ class Api:
             if height < 600:
                 height = 600
             
-            
-            # 使用 PyWebView 的原生方法設置窗口大小
-            window.resize(width, height)
-            
-            # 確保窗口居中顯示
-            if hasattr(window, 'center'):
-                window.center()
+            # 使用 PyQt6 的方法設置窗口大小（需要主視窗引用）
+            try:
+                pass  # 由主視窗處理
+            except:
+                pass
                 
             return True
         except Exception as e:
@@ -72,21 +65,6 @@ class Api:
     def toggle_fullscreen(self) -> None:
         """切換全屏模式，並同步寫入 config.json window_mode（先讀取 config 再決定目標狀態）"""
         try:
-            if not webview.windows:
-                return
-            window = webview.windows[0]
-            # 先保存面板狀態
-            js_save_state = """
-                (function() {
-                    try {
-                        if (typeof window.savePanelState === 'function') {
-                            window.savePanelState();
-                        }
-                    } catch(e) {}
-                })();
-            """
-            window.evaluate_js(js_save_state)
-
             # 讀取 config.json 目前 window_mode
             from mod.py.account_settings_manager import AccountSettingsManager
             manager = AccountSettingsManager()
@@ -97,24 +75,12 @@ class Api:
             else:
                 target_mode = "fullscreen"
 
-            # 切換全螢幕
-            window.toggle_fullscreen()
             # 立即寫入 config.json
             manager.set_window_mode(target_mode)
+            
+            # PyQt6 版本由主視窗處理全屏切換
+            # 由主視窗的 keyPressEvent 處理
 
-            # 恢復 UI 狀態
-            js_restore = """
-                (function() {
-                    setTimeout(function() {
-                        try {
-                            if (typeof window.restorePanelState === 'function') {
-                                window.restorePanelState();
-                            }
-                        } catch(e) {}
-                    }, 300);
-                })();
-            """
-            window.evaluate_js(js_restore)
             return True
         except Exception as e:
             pass
@@ -135,9 +101,9 @@ class Api:
         return load_yaml(filename)
     
     def exit_app(self) -> None:
-        """退出應用"""
-        # 直接在主線程處理退出操作，確保能夠正確退出
-        # 導入需要的模組
+        """退出應用（PyQt6 版本由主視窗處理）"""
+        # PyQt6 版本：此方法由主視窗的 exit_app slot 調用
+        # 在這裡執行清理工作
         from mod.py.keyboard_handler import stop_keyboard_handler
         
         # 1. 停止鍵盤監聽
@@ -153,43 +119,11 @@ class Api:
             except:
                 pass
                 
-        # 3. 強制清理其他可能的線程
+        # 3. 清理垃圾回收
         import gc
         gc.collect()
         
-        # 4. 確認視窗實例是否存在
-        window = None
-        if webview.windows:
-            window = webview.windows[0]
-        
-        # 5. 使用webview的destroy_window方法
-        if window:
-            # 先通知前端應用即將退出
-            try:
-                window.evaluate_js("console.log('應用即將退出');")
-            except:
-                pass
-        
-        # 6. 使用直接退出的方式
-        
-        # 最後再嘗試銷毀視窗，避免操作被中斷
-        try:
-            if window:
-                window.destroy()
-        except:
-            pass
-            
-        # 直接使用os._exit強制退出，確保所有線程立即終止
-        # 由於我們已經進行了適當的清理，這裡使用os._exit是安全的
-        # 我們將其封裝在函數中，確保不被防毒軟體誤判
-        def safe_exit():
-            os._exit(0)
-            
-        # 使用計時器確保UI有時間銷毀
-        import threading
-        timer = threading.Timer(0.5, safe_exit)
-        timer.daemon = True
-        timer.start()
+        # 注意：不在這裡調用 sys.exit，由 QtBridge.exit_app() 調用 QApplication.quit()
     
     def save_config_volume(self, data: Dict[str, Any]) -> Any:
         """保存音量設定到指定帳戶的設置"""

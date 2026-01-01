@@ -1,0 +1,149 @@
+name: 跨平台編譯 (Nuitka)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:  # 允許手動觸發
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+        python-version: ['3.13']  # Python 3.14 在 GitHub Actions 可能還不穩定
+    
+    steps:
+    - name: Checkout 代碼
+      uses: actions/checkout@v4
+    
+    - name: 設置 Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: 設置 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    
+    # ==================== 安裝依賴 ====================
+    - name: 安裝 Python 依賴
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: 安裝前端依賴並打包
+      run: |
+        cd mod
+        npm install
+        npx webpack --mode production
+        cd ..
+    
+    # ==================== Windows 特定設置 ====================
+    - name: (Windows) 安裝 MSVC
+      if: runner.os == 'Windows'
+      uses: ilammy/msvc-dev-cmd@v1
+    
+    # ==================== macOS 特定設置 ====================
+    - name: (macOS) 創建圖標
+      if: runner.os == 'macOS'
+      run: |
+        # 如果沒有 .icns，從 .png 創建（需要先準備好 logo.png）
+        if [ ! -f logo.icns ] && [ -f logo192.png ]; then
+          mkdir -p icon.iconset
+          sips -z 16 16     logo192.png --out icon.iconset/icon_16x16.png
+          sips -z 32 32     logo192.png --out icon.iconset/icon_16x16@2x.png
+          sips -z 32 32     logo192.png --out icon.iconset/icon_32x32.png
+          sips -z 64 64     logo192.png --out icon.iconset/icon_32x32@2x.png
+          sips -z 128 128   logo192.png --out icon.iconset/icon_128x128.png
+          sips -z 256 256   logo192.png --out icon.iconset/icon_128x128@2x.png
+          sips -z 256 256   logo192.png --out icon.iconset/icon_256x256.png
+          sips -z 512 512   logo192.png --out icon.iconset/icon_256x256@2x.png
+          iconutil -c icns icon.iconset -o logo.icns
+        fi
+    
+    # ==================== Linux 特定設置 ====================
+    - name: (Linux) 安裝系統依賴
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y patchelf ccache
+    
+    # ==================== Nuitka 編譯 ====================
+    - name: 使用 Nuitka 編譯
+      run: python build.py
+    
+    # ==================== 平台特定後處理 ====================
+    - name: (Windows) 重命名輸出
+      if: runner.os == 'Windows'
+      run: |
+        Rename-Item -Path "dist\main.dist" -NewName "ReversedFront-Windows"
+        Compress-Archive -Path "dist\ReversedFront-Windows\*" -DestinationPath "ReversedFront-Windows.zip"
+    
+    - name: (macOS) 創建 DMG
+      if: runner.os == 'macOS'
+      run: |
+        mv dist/main.dist/ReversedFront.app dist/ReversedFront.app
+        hdiutil create -volname "ReversedFront" -srcfolder dist/ReversedFront.app -ov -format UDZO ReversedFront-macOS.dmg
+    
+    - name: (Linux) 打包
+      if: runner.os == 'Linux'
+      run: |
+        mv dist/main.dist dist/ReversedFront-Linux
+        cd dist
+        tar -czf ../ReversedFront-Linux.tar.gz ReversedFront-Linux
+        cd ..
+    
+    # ==================== 上傳編譯產物 ====================
+    - name: 上傳 Windows 產物
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ReversedFront-Windows
+        path: ReversedFront-Windows.zip
+    
+    - name: 上傳 macOS 產物
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ReversedFront-macOS
+        path: ReversedFront-macOS.dmg
+    
+    - name: 上傳 Linux 產物
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ReversedFront-Linux
+        path: ReversedFront-Linux.tar.gz
+
+  # ==================== 創建 Release ====================
+  release:
+    name: 創建 Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: 下載所有產物
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: 創建 Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          artifacts/ReversedFront-Windows/ReversedFront-Windows.zip
+          artifacts/ReversedFront-macOS/ReversedFront-macOS.dmg
+          artifacts/ReversedFront-Linux/ReversedFront-Linux.tar.gz
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

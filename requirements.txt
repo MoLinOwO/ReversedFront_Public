@@ -1,0 +1,5 @@
+PyQt6>=6.6.0
+PyQt6-WebEngine>=6.6.0
+requests>=2.31.0
+pyyaml>=6.0
+nuitka>=2.0.0

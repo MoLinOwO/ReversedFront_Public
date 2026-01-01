@@ -10,6 +10,12 @@
         // Normalize URL for consistent matching
         const normalizedUrl = url.toLowerCase().replace(/\\/g, '/');
 
+        // 忽略影片檔案，不攔截影片播放
+        if (normalizedUrl.endsWith('.mp4') || normalizedUrl.endsWith('.webm') || 
+            normalizedUrl.endsWith('.ogg') || normalizedUrl.endsWith('.ogv')) {
+            return null;
+        }
+
         if (!normalizedUrl.endsWith('.mp3')) {
             return null;
         }
@@ -48,6 +54,18 @@
             if (typeof url === 'string' && url.startsWith('undefined/')) {
                 correctedUrl = url.substring(10); // "undefined/".length is 10
             }
+            
+            // 修正路徑：將 /audio/ 或 audio/ 開頭的路徑轉換為 passionfruit/audio/
+            if (typeof correctedUrl === 'string') {
+                // 處理 /audio/ 開頭的路徑
+                if (correctedUrl.startsWith('/audio/')) {
+                    correctedUrl = 'passionfruit' + correctedUrl;
+                }
+                // 處理 audio/ 開頭但不含 passionfruit 的路徑
+                else if (correctedUrl.startsWith('audio/') && !correctedUrl.startsWith('passionfruit/')) {
+                    correctedUrl = 'passionfruit/' + correctedUrl;
+                }
+            }
 
             const type = getAudioTypeFromUrl(correctedUrl);
             this._rf_type = type;
@@ -65,11 +83,19 @@
 
     HTMLMediaElement.prototype.play = function() {
         const type = this._rf_type || getAudioTypeFromUrl(this.currentSrc || this.src);
+        
+        // 如果是影片或非音訊檔案，直接播放不攔截
+        if (type === null) {
+            return origPlay.apply(this, arguments);
+        }
+        
+        // 只攔截 SE147 靜音邏輯
         if (type === 'SE147' && window._rf_se147Muted) {
             this.pause();
             this.currentTime = 0;
             return Promise.resolve();
         }
+        
         return origPlay.apply(this, arguments);
     };
 

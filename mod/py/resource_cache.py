@@ -1,4 +1,6 @@
-"""資源緩存管理模組"""
+"""資源緩存管理模組
+Python 3.14+ Free-threaded 優化：使用純線程實現高並發下載
+"""
 
 import os
 import sys
@@ -9,11 +11,9 @@ import urllib.parse
 import urllib.request
 import urllib.error
 import logging
-import multiprocessing
 import concurrent.futures
 from queue import Queue
-# 不再使用Path，使用os.path代替
-# 保留 requests 以兼容現有代碼，但新代碼優先使用 urllib
+# 保留 requests 以兼容現有代碼
 import requests
 
 # 禁用日誌
@@ -22,54 +22,84 @@ logger.setLevel(logging.CRITICAL + 1)
 logger.disabled = True
 logging.basicConfig(handlers=[logging.NullHandler()])
 
+
 class ResourceCacheManager:
-    """資源緩存管理器 (純線程實現)"""
+    """資源緩存管理器 (Python 3.14 Free-threaded 優化)
+    
+    Free-threaded 優化說明：
+    - 移除 multiprocessing 依賴，純使用 threading
+    - 在 NoGIL 模式下，I/O 密集型下載可真正並行執行
+    - 使用線程安全的共享數據結構，避免進程間通信開銷
+    - ThreadPoolExecutor 自動利用多核心處理並發下載
+    """
     _instance = None
     _is_initialized = False
+    _init_lock = threading.Lock()  # 保護初始化的鎖
     
     def __new__(cls, server_base_url="https://media.komisureiya.com/"):
         if cls._instance is None:
-            cls._instance = super(ResourceCacheManager, cls).__new__(cls)
+            # Free-threaded: 確保 Singleton 初始化的線程安全
+            with cls._init_lock:
+                if cls._instance is None:
+                    cls._instance = super(ResourceCacheManager, cls).__new__(cls)
         return cls._instance
     
     def __init__(self, server_base_url="https://media.komisureiya.com/"):
         if ResourceCacheManager._is_initialized:
             return
+        
+        # Free-threaded: 雙重檢查鎖定模式 (DCL)
+        with ResourceCacheManager._init_lock:
+            if ResourceCacheManager._is_initialized:
+                return
             
-        ResourceCacheManager._is_initialized = True
-        self.server_base_url = server_base_url
-        self.download_queue = Queue()  # 使用線程安全的隊列
-        self.download_stats = {
-            "start_time": time.time(),
-            "bytes_downloaded": 0,
-            "last_update": time.time()
-        }
-        self.queue_lock = threading.Lock()
-        self.is_downloading = False
-        self.should_stop = False  # 控制線程停止的標誌
-        
-        # 確定最佳線程池大小
-        cpu_count = multiprocessing.cpu_count()
-        self.max_workers = max(1, min(cpu_count * 2, 32))
-        
-        # 建立下載線程池
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=self.max_workers)
-        self.active_downloads = 0
-        self.active_downloads_lock = threading.Lock()
-        
-        # 共享的HTTP會話 (線程安全)
-        self.session = requests.Session()
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Referer': 'https://game.komisureiya.com/'
-        })
-        adapter = requests.adapters.HTTPAdapter(
-            pool_connections=self.max_workers,
-            pool_maxsize=self.max_workers * 2,
-            max_retries=3
-        )
-        self.session.mount('http://', adapter)
-        self.session.mount('https://', adapter)
+            ResourceCacheManager._is_initialized = True
+            self.server_base_url = server_base_url
+            
+            # Free-threaded: Queue 已是線程安全的
+            self.download_queue = Queue()
+            
+            # Free-threaded: 需要鎖保護的共享狀態
+            self._stats_lock = threading.Lock()
+            self.download_stats = {
+                "start_time": time.time(),
+                "bytes_downloaded": 0,
+                "last_update": time.time()
+            }
+            
+            self.queue_lock = threading.Lock()
+            self.is_downloading = False
+            self.should_stop = False
+            
+            # Python 3.14 Free-threaded: I/O 密集型使用 threading 優於 multiprocessing
+            # CPU 核心數 * 2 適合 I/O bound 任務
+            cpu_count = os.cpu_count() or 4
+            self.max_workers = max(4, min(cpu_count * 2, 32))
+            
+            print(f"[Free-threaded] 資源下載線程池: {self.max_workers} workers (CPU: {cpu_count} 核心)")
+            
+            # ThreadPoolExecutor: NoGIL 下可真正並行執行
+            self.executor = concurrent.futures.ThreadPoolExecutor(
+                max_workers=self.max_workers,
+                thread_name_prefix="ResourceDownload"
+            )
+            
+            self.active_downloads = 0
+            self.active_downloads_lock = threading.Lock()
+            
+            # 共享的 HTTP Session (requests.Session 是線程安全的)
+            self.session = requests.Session()
+            self.session.headers.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'Referer': 'https://game.komisureiya.com/'
+            })
+            adapter = requests.adapters.HTTPAdapter(
+                pool_connections=self.max_workers,
+                pool_maxsize=self.max_workers * 2,
+                max_retries=3
+            )
+            self.session.mount('http://', adapter)
+            self.session.mount('https://', adapter)
         
         # 判斷是否為打包環境
         if getattr(sys, 'frozen', False):
@@ -119,7 +149,13 @@ class ResourceCacheManager:
             # 如果線程已經在運行，什麼都不做
     
     def _download_single_file(self, url, local_path):
-        """下載單個檔案的實現 (純線程版)"""
+        """下載單個檔案 (Free-threaded 優化)
+        
+        Python 3.14 優勢：
+        - I/O 操作 (網絡、磁碟) 在 NoGIL 下可完全並行
+        - 多個下載任務不會互相阻塞 CPU
+        - 使用 Lock 確保共享狀態 (download_stats) 的線程安全
+        """
         try:
             # 處理路徑中的查詢參數
             if '?' in local_path:
@@ -143,7 +179,7 @@ class ResourceCacheManager:
             temp_file = abs_path + '.download'
             
             try:
-                # 下載檔案
+                # Free-threaded: 網絡 I/O 在 NoGIL 下完全並行
                 response = self.session.get(url, stream=True, timeout=15)
                 response.raise_for_status()
                 
@@ -153,18 +189,19 @@ class ResourceCacheManager:
                 start_time = time.time()
                 
                 with open(temp_file, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=16384):  # 較大的塊大小
+                    # Free-threaded: 16KB chunk size 適合多線程並發寫入
+                    for chunk in response.iter_content(chunk_size=16384):
                         if chunk:
                             bytes_downloaded += len(chunk)
                             f.write(chunk)
                             
-                            # 更新下載統計
+                            # Free-threaded: 使用 Lock 保護共享狀態更新
                             current_time = time.time()
-                            with self.active_downloads_lock:
+                            with self._stats_lock:
                                 self.download_stats["bytes_downloaded"] += len(chunk)
                                 self.download_stats["last_update"] = current_time
                 
-                # 重命名到最終檔名
+                # 原子操作：重命名到最終檔名
                 if os.path.exists(temp_file):
                     os.rename(temp_file, abs_path)
                 

@@ -1,4 +1,7 @@
 // 匯入所有主要功能 js
+// 影片格式修復（最優先）
+import './video_format_fix.js';
+// 其他模組
 import './account/accountManager.js';
 import './audio/audioControls.js';
 import './audio/globalAudioControl.js';
