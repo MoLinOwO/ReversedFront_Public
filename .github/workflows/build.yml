@@ -111,12 +111,22 @@ jobs:
     
     # Windows 數位簽章
     - name: (Windows) 數位簽章
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && env.CERTIFICATE_BASE64 != ''
+      env:
+        CERTIFICATE_BASE64: ${{ secrets.REVERSEDFRONT }}
+        CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
       run: |
+        # 從 Base64 解碼證書
+        $certBytes = [Convert]::FromBase64String($env:CERTIFICATE_BASE64)
+        [IO.File]::WriteAllBytes("temp-cert.pfx", $certBytes)
+        
         # 簽章安裝程序
-        & signtool sign /f "mod\data\ReversedFront.pfx" /p "" `
+        & signtool sign /f "temp-cert.pfx" /p $env:CERTIFICATE_PASSWORD `
           /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
           ReversedFront-Setup.exe
+        
+        # 刪除臨時證書
+        Remove-Item temp-cert.pfx
         
         Write-Host "數位簽章已套用" -ForegroundColor Green
     
@@ -207,13 +217,6 @@ jobs:
       with:
         name: ReversedFront-macOS
         path: ReversedFront-macOS.dmg
-    
-    - name: 上傳 Linux AppImage
-      if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ReversedFront-Linux
-        path: ReversedFront-Linux.AppImage
 
   # ==================== 創建 Release ====================
   release:
