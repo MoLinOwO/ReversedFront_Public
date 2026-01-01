@@ -143,7 +143,8 @@ def build_nuitka():
         '--include-data-dir=static=static',
         '--include-data-dir=tiles=tiles',
         '--include-data-dir=dexopt=dexopt',
-        '--include-data-dir=mod/data=mod/data',
+        '--include-data-dir=passionfruit=passionfruit',
+        '--include-data-dir=mod=mod',
         
         # 包含單獨的資料檔案
         '--include-data-files=index.html=index.html',
