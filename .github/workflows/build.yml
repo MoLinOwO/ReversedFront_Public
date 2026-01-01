@@ -109,20 +109,16 @@ jobs:
         
         & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
     
-    # Windows 數位簽章 (可選 - 需要證書)
-    # - name: (Windows) 數位簽章
-    #   if: runner.os == 'Windows' && secrets.CERTIFICATE_BASE64 != ''
-    #   run: |
-    #     # 解碼證書
-    #     $cert = [System.Convert]::FromBase64String("${{ secrets.CERTIFICATE_BASE64 }}")
-    #     [IO.File]::WriteAllBytes("cert.pfx", $cert)
-    #     
-    #     # 簽章
-    #     & signtool sign /f cert.pfx /p "${{ secrets.CERTIFICATE_PASSWORD }}" `
-    #       /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
-    #       ReversedFront-Setup.exe
-    #     
-    #     Remove-Item cert.pfx
+    # Windows 數位簽章
+    - name: (Windows) 數位簽章
+      if: runner.os == 'Windows'
+      run: |
+        # 簽章安裝程序
+        & signtool sign /f "mod\data\ReversedFront.pfx" /p "" `
+          /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
+          ReversedFront-Setup.exe
+        
+        Write-Host "數位簽章已套用" -ForegroundColor Green
     
     - name: (macOS) 創建 DMG
       if: runner.os == 'macOS'
@@ -196,15 +192,14 @@ jobs:
           ## 🎉 ReversedFront v2.8.0
           
           ### 📦 下載
-          - **Windows**: ReversedFront-Setup.exe (安裝程序，未簽章)
+          - **Windows**: ReversedFront-Setup.exe (安裝程序，已數位簽章)
           - **Linux**: ReversedFront-Linux.tar.gz (壓縮包)
           - **macOS**: 暫不提供（PyQt6 限制）
           
           ### 💡 使用說明
           **Windows**:
           - 執行 ReversedFront-Setup.exe 安裝
-          - 首次運行可能會被 Windows Defender 標記（因為未簽章）
-          - 點擊"更多資訊" → "仍要執行"
+          - 已通過數位簽章驗證
           
           **Linux**:
           - 解壓: `tar -xzf ReversedFront-Linux.tar.gz`
