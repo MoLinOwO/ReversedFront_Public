@@ -139,12 +139,12 @@ def build_nuitka():
         '--product-version=2.8.0.0',
         '--file-description=ReversedFront - 逆統戰：烽火輔助工具',
         
-        # 包含資料目錄（只包含非 Python 的資源文件）
+        # 包含資料目錄（不包含源碼，防止解包）
         '--include-data-dir=static=static',
         '--include-data-dir=tiles=tiles',
         '--include-data-dir=dexopt=dexopt',
         '--include-data-dir=passionfruit=passionfruit',
-        '--include-data-dir=mod=mod',
+        '--include-data-dir=mod/data=mod/data',  # 只包含配置文件，不包含源碼
         
         # 包含單獨的資料檔案
         '--include-data-files=index.html=index.html',

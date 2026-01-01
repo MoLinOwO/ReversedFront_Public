@@ -62,6 +62,13 @@ main.dist/
 .env
 .env.local
 
+# 證書文件（絕不提交）
+*.pfx
+*.p12
+*.pem
+*.key
+mod/data/*.pfx
+
 # 日誌
 *.log
 logs/
