@@ -17,8 +17,12 @@ def convert_icon_for_platform():
     platform_name = platform.system().lower()
     
     if not os.path.exists('logo.ico'):
-        print("  WARNING: 未找到 logo.ico")
+        print("  WARNING: 未找到 logo.ico，將使用默認圖標")
         return False
+    
+    # macOS 和 Linux 才需要轉換
+    if platform_name == 'windows':
+        return True
     
     try:
         from PIL import Image
@@ -44,32 +48,43 @@ def convert_icon_for_platform():
                         img_resized_2x.save(f'{iconset_dir}/icon_{size}x{size}@2x.png')
                 
                 # 使用 iconutil 創建 .icns
-                subprocess.run(['iconutil', '-c', 'icns', iconset_dir, '-o', 'logo.icns'], check=True)
+                result = subprocess.run(['iconutil', '-c', 'icns', iconset_dir, '-o', 'logo.icns'], 
+                                      capture_output=True, text=True)
                 shutil.rmtree(iconset_dir)
-                print("  OK: logo.icns 已創建")
-                return True
+                
+                if result.returncode == 0:
+                    print("  OK: logo.icns 已創建")
+                    return True
+                else:
+                    print(f"  WARNING: iconutil 失敗: {result.stderr}")
+                    return False
                 
         elif platform_name == 'linux':
             # Linux 需要 PNG 格式
+            created = False
             if not os.path.exists('logo192.png'):
-                print("  >> 從 logo.ico 提取 PNG...")
+                print("  >> 從 logo.ico 創建 logo192.png...")
                 img = Image.open('logo.ico')
                 img = img.resize((192, 192), Image.Resampling.LANCZOS)
                 img.save('logo192.png')
                 print("  OK: logo192.png 已創建")
+                created = True
             if not os.path.exists('logo512.png'):
+                print("  >> 從 logo.ico 創建 logo512.png...")
                 img = Image.open('logo.ico')
                 img = img.resize((512, 512), Image.Resampling.LANCZOS)
                 img.save('logo512.png')
                 print("  OK: logo512.png 已創建")
+                created = True
             return True
             
     except ImportError:
-        print("  WARNING: 未安裝 Pillow，無法轉換圖標")
-        print("  提示: pip install Pillow")
+        print("  WARNING: 未安裝 Pillow，跳過圖標轉換")
+        print("  提示: 在 requirements.txt 中已包含 Pillow")
         return False
     except Exception as e:
         print(f"  WARNING: 圖標轉換失敗: {e}")
+        print("  將繼續編譯，但可能沒有自定義圖標")
         return False
     
     return True
@@ -130,11 +145,10 @@ def build_nuitka():
         '--include-data-dir=mod/data=mod/data',
         
         # 包含單獨的資料檔案
-        '--include-data-files=asset-manifest.json=./',
-        '--include-data-files=index.android.bundle=./',
         '--include-data-files=index.html=./',
         '--include-data-files=manifest.json=./',
         '--include-data-files=robots.txt=./',
+        '--include-data-files=transporter.html=./',
     ]
     
     # 平台特定參數
