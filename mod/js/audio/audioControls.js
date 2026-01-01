@@ -306,9 +306,14 @@ export function setupAudioControls(controlsPanel) {
     }
     const se147Button = document.getElementById('se147-toggle-button');
     const se147Toggle = document.getElementById('se147-toggle');
-    if (se147Button && se147Toggle) {
+    // 檢查是否已經綁定過事件監聽器，避免重複綁定
+    if (se147Button && se147Toggle && !se147Button.dataset.listenerAttached) {
+        // 標記已綁定
+        se147Button.dataset.listenerAttached = 'true';
+        
         // 使用一個變量跟踪操作狀態，避免重複操作
         let isWriting = false;
+        let lastClickTime = 0;
         
         // 更新按鈕UI的輔助函數，確保視覺呈現與狀態一致
         const updateSe147ButtonUI = (muted) => {
@@ -318,15 +323,23 @@ export function setupAudioControls(controlsPanel) {
         };
         
         se147Button.addEventListener('click', async function() {
+            // 防止快速雙擊（300ms內的第二次點擊會被忽略）
+            const now = Date.now();
+            if (now - lastClickTime < 300) {
+                console.log('點擊過快，忽略');
+                return;
+            }
+            lastClickTime = now;
             if (isWriting) return;
             isWriting = true;
             se147Button.disabled = true;
             try {
                 // 取反當前 window._rf_se147Muted 狀態
                 const newMuted = !window._rf_se147Muted;
+                // 先更新全局狀態
+                window._rf_se147Muted = newMuted;
                 // 立即更新 UI，提供即時反饋
                 updateSe147ButtonUI(newMuted);
-                window._rf_se147Muted = newMuted;
                 if (window.setMediaVolume) window.setMediaVolume();
                 if (window.updateSe147Volume) window.updateSe147Volume();
                 // 保存設置
@@ -341,20 +354,15 @@ export function setupAudioControls(controlsPanel) {
                         saveData.target_account = targetAccount;
                     }
                     await window.pywebview.api.save_config_volume(saveData);
+                    console.log('戰報通知設定已保存:', newMuted);
                 }
             } catch (e) {
                 console.error('戰報通知設定失敗', e);
+                // 發生錯誤時恢復原狀態
+                const originalMuted = !window._rf_se147Muted;
+                window._rf_se147Muted = originalMuted;
+                updateSe147ButtonUI(originalMuted);
             } finally {
-                // 無論成功或失敗都強制同步一次狀態
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.get_config_volume) {
-                    try {
-                        const targetAccount = await getCurrentAccountData();
-                        const cfg = await window.pywebview.api.get_config_volume(targetAccount);
-                        window.updateCustomControlsUI(cfg);
-                    } catch (e) {
-                        // 忽略同步失敗
-                    }
-                }
                 se147Button.disabled = false;
                 isWriting = false;
             }

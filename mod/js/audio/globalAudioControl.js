@@ -298,21 +298,8 @@
         }
     };
 
-    // 初始化戰報通知按鈕狀態
-    const se147Button = document.getElementById('se147-toggle-button');
-    const se147Toggle = document.getElementById('se147-toggle');
-    if (se147Button && se147Toggle) {
-        se147Button.addEventListener('click', function() {
-            const newState = !se147Toggle.checked;
-            se147Toggle.checked = newState;
-            window.setSE147Muted(!newState);
-        });
-        // 初始化狀態
-        const initialState = !window._rf_se147Muted;
-        se147Toggle.checked = initialState;
-        se147Button.textContent = `戰報通知：${initialState ? '開' : '關'}`;
-        se147Button.style.backgroundColor = initialState ? '#5cb85c' : '#d9534f';
-    }
+    // 初始化戰報通知按鈕狀態已移至 audioControls.js 的 setupAudioControls 函數中
+    // 避免與 audioControls.js 中的事件監聽器衝突
 
     // 新增：強制更新狀態
     window.forceUpdateSE147Button = function() {
