@@ -12,6 +12,69 @@ import subprocess
 import shutil
 from pathlib import Path
 
+def convert_icon_for_platform():
+    """從 logo.ico 轉換到各平台需要的格式"""
+    platform_name = platform.system().lower()
+    
+    if not os.path.exists('logo.ico'):
+        print("  WARNING: 未找到 logo.ico")
+        return False
+    
+    try:
+        from PIL import Image
+        
+        if platform_name == 'darwin':  # macOS
+            if not os.path.exists('logo.icns'):
+                print("  >> 從 logo.ico 創建 logo.icns...")
+                img = Image.open('logo.ico')
+                # 調整到合適大小
+                if img.size[0] < 512:
+                    img = img.resize((512, 512), Image.Resampling.LANCZOS)
+                
+                # 創建 iconset
+                iconset_dir = 'icon.iconset'
+                os.makedirs(iconset_dir, exist_ok=True)
+                
+                sizes = [16, 32, 128, 256, 512]
+                for size in sizes:
+                    img_resized = img.resize((size, size), Image.Resampling.LANCZOS)
+                    img_resized.save(f'{iconset_dir}/icon_{size}x{size}.png')
+                    if size <= 256:
+                        img_resized_2x = img.resize((size*2, size*2), Image.Resampling.LANCZOS)
+                        img_resized_2x.save(f'{iconset_dir}/icon_{size}x{size}@2x.png')
+                
+                # 使用 iconutil 創建 .icns
+                subprocess.run(['iconutil', '-c', 'icns', iconset_dir, '-o', 'logo.icns'], check=True)
+                shutil.rmtree(iconset_dir)
+                print("  OK: logo.icns 已創建")
+                return True
+                
+        elif platform_name == 'linux':
+            # Linux 需要 PNG 格式
+            if not os.path.exists('logo192.png'):
+                print("  >> 從 logo.ico 提取 PNG...")
+                img = Image.open('logo.ico')
+                img = img.resize((192, 192), Image.Resampling.LANCZOS)
+                img.save('logo192.png')
+                print("  OK: logo192.png 已創建")
+            if not os.path.exists('logo512.png'):
+                img = Image.open('logo.ico')
+                img = img.resize((512, 512), Image.Resampling.LANCZOS)
+                img.save('logo512.png')
+                print("  OK: logo512.png 已創建")
+            return True
+            
+    except ImportError:
+        print("  WARNING: 未安裝 Pillow，無法轉換圖標")
+        print("  提示: pip install Pillow")
+        return False
+    except Exception as e:
+        print(f"  WARNING: 圖標轉換失敗: {e}")
+        return False
+    
+    return True
+
+
 # 設定 Windows 控制台 UTF-8 輸出
 if platform.system() == 'Windows':
     import codecs
@@ -39,6 +102,10 @@ def build_nuitka():
     print("=" * 60)
     print(f"開始編譯 {platform_name.upper()} 版本")
     print("=" * 60)
+    
+    # 轉換圖標
+    print("\n檢查並轉換圖標...")
+    convert_icon_for_platform()
     
     # 基礎 Nuitka 參數
     nuitka_args = [
@@ -78,19 +145,32 @@ def build_nuitka():
             '--include-data-files=logo.ico=./',
         ])
     elif platform_name == 'macos':
-        nuitka_args.extend([
+        base_macos_args = [
             '--macos-create-app-bundle',
-            '--macos-app-icon=logo.icns',
             '--macos-app-name=ReversedFront',
             '--macos-app-version=2.8.0',
-            '--include-data-files=logo.icns=./',
-        ])
+        ]
+        # 圖標為可選
+        if os.path.exists('logo.icns'):
+            base_macos_args.extend([
+                '--macos-app-icon=logo.icns',
+                '--include-data-files=logo.icns=./',
+            ])
+            print("  >> 使用 logo.icns 圖標")
+        else:
+            print("  WARNING: 未找到 logo.icns，將使用默認圖標")
+        nuitka_args.extend(base_macos_args)
     elif platform_name == 'linux':
-        nuitka_args.extend([
-            '--linux-icon=logo.png',
-            '--include-data-files=logo192.png=./',
-            '--include-data-files=logo512.png=./',
-        ])
+        base_linux_args = []
+        # 圖標為可選
+        if os.path.exists('logo192.png'):
+            base_linux_args.extend([
+                '--linux-icon=logo192.png',
+                '--include-data-files=logo192.png=./',
+            ])
+        if os.path.exists('logo512.png'):
+            base_linux_args.append('--include-data-files=logo512.png=./')
+        nuitka_args.extend(base_linux_args)
     
     # 添加主程式
     nuitka_args.append('main.py')
