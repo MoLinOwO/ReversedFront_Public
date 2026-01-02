@@ -112,7 +112,7 @@ jobs:
     
     # Windows 數位簽章
     - name: (Windows) 數位簽章
-      if: runner.os == 'Windows' && env.CERTIFICATE_BASE64 != ''
+      if: runner.os == 'Windows' && secrets.REVERSEDFRONT != ''
       env:
         CERTIFICATE_BASE64: ${{ secrets.REVERSEDFRONT }}
         CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
@@ -125,6 +125,11 @@ jobs:
         & signtool sign /f "temp-cert.pfx" /p $env:CERTIFICATE_PASSWORD `
           /tr http://timestamp.digicert.com /td sha256 /fd sha256 `
           ReversedFront-Setup.exe
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "簽章失敗!" -ForegroundColor Red
+            exit 1
+        }
         
         # 刪除臨時證書
         Remove-Item temp-cert.pfx
@@ -232,8 +237,14 @@ jobs:
       with:
         path: artifacts
     
+    - name: 列出下載的文件
+      run: |
+        echo "=== 下載的 artifacts 結構 ==="
+        ls -R artifacts/
+        echo "================================"
+    
     - name: 創建 Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         files: |
           artifacts/ReversedFront-Windows-Setup/ReversedFront-Setup.exe
@@ -241,6 +252,7 @@ jobs:
         draft: false
         prerelease: false
         generate_release_notes: true
+        fail_on_unmatched_files: false
         body: |
           ## 🎉 ReversedFront v2.8.0
           
