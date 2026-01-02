@@ -9,6 +9,9 @@ on:
     branches: [ main, master ]
   workflow_dispatch:  # 允許手動觸發
 
+permissions:
+  contents: write  # 允許創建 Release 和上傳資產
+
 jobs:
   build:
     name: Build on ${{ matrix.os }}
