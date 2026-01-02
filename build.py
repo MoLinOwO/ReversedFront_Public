@@ -165,8 +165,16 @@ def build_nuitka():
         '--include-data-dir=tiles=tiles',
         '--include-data-dir=dexopt=dexopt',
         '--include-data-dir=passionfruit=passionfruit',
-        '--include-data-dir=mod/data=mod/data',  # 配置文件
-        '--include-data-dir=mod/js=mod/js',  # JavaScript 打包後的代碼
+        
+        # 只包含 mod/data 中的 YAML 配置文件，排除證書等敏感文件
+        '--include-data-files=mod/data/exit_prompts.yaml=mod/data/exit_prompts.yaml',
+        '--include-data-files=mod/data/RFcity.yaml=mod/data/RFcity.yaml',
+        '--include-data-files=mod/data/soldier-svgrepo-com.svg=mod/data/soldier-svgrepo-com.svg',
+        
+        # 只包含編譯後的 JavaScript bundle，不包含源代碼
+        '--include-data-files=mod/js/main.bundle.js=mod/js/main.bundle.js',
+        '--include-data-files=mod/js/706.main.bundle.js=mod/js/706.main.bundle.js',
+        '--include-data-files=mod/js/main.bundle.js.LICENSE.txt=mod/js/main.bundle.js.LICENSE.txt',
         
         # 包含單獨的資料檔案
         '--include-data-files=index.html=index.html',

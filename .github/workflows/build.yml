@@ -112,11 +112,16 @@ jobs:
     
     # Windows 數位簽章
     - name: (Windows) 數位簽章
-      if: runner.os == 'Windows' && secrets.REVERSEDFRONT != ''
+      if: runner.os == 'Windows'
       env:
         CERTIFICATE_BASE64: ${{ secrets.REVERSEDFRONT }}
         CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
       run: |
+        if ([string]::IsNullOrEmpty($env:CERTIFICATE_BASE64)) {
+            Write-Host "未配置證書，跳過簽章" -ForegroundColor Yellow
+            exit 0
+        }
+        
         # 從 Base64 解碼證書
         $certBytes = [Convert]::FromBase64String($env:CERTIFICATE_BASE64)
         [IO.File]::WriteAllBytes("temp-cert.pfx", $certBytes)
