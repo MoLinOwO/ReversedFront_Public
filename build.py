@@ -10,7 +10,24 @@ import sys
 import platform
 import subprocess
 import shutil
+import re
 from pathlib import Path
+
+def get_version_from_main():
+    """從 main.py 讀取版本號"""
+    main_py = Path(__file__).parent / 'main.py'
+    if main_py.exists():
+        with open(main_py, 'r', encoding='utf-8') as f:
+            content = f.read()
+            match = re.search(r'LOCAL_VERSION\s*=\s*["\']([^"\']+)["\']', content)
+            if match:
+                version = match.group(1)
+                # 轉換為 X.Y.Z.W 格式
+                parts = version.split('.')
+                while len(parts) < 4:
+                    parts.append('0')
+                return '.'.join(parts[:4])
+    return '1.0.0.0'  # 默認版本
 
 def convert_icon_for_platform():
     """從 logo.ico 轉換到各平台需要的格式"""
@@ -122,6 +139,10 @@ def build_nuitka():
     print("\n檢查並轉換圖標...")
     convert_icon_for_platform()
     
+    # 從 main.py 讀取版本號
+    version = get_version_from_main()
+    print(f"\n應用版本: {version}")
+    
     # 基礎 Nuitka 參數
     nuitka_args = [
         sys.executable, '-m', 'nuitka',
@@ -135,8 +156,8 @@ def build_nuitka():
         # 公司與產品資訊
         '--company-name=ESC',
         '--product-name=ReversedFront',
-        '--file-version=2.8.0.0',
-        '--product-version=2.8.0.0',
+        f'--file-version={version}',
+        f'--product-version={version}',
         '--file-description=ReversedFront - 逆統戰：烽火輔助工具',
         
         # 包含資料目錄（不包含源碼，防止解包）
