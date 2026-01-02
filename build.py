@@ -144,7 +144,8 @@ def build_nuitka():
         '--include-data-dir=tiles=tiles',
         '--include-data-dir=dexopt=dexopt',
         '--include-data-dir=passionfruit=passionfruit',
-        '--include-data-dir=mod/data=mod/data',  # 只包含配置文件，不包含源碼
+        '--include-data-dir=mod/data=mod/data',  # 配置文件
+        '--include-data-dir=mod/js=mod/js',  # JavaScript 打包後的代碼
         
         # 包含單獨的資料檔案
         '--include-data-files=index.html=index.html',
