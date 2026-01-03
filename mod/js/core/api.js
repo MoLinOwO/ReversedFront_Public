@@ -15,7 +15,8 @@ export async function getActiveAccount() {
 
 export async function addAccount(accountObj) {
     if (window.pywebview && window.pywebview.api && window.pywebview.api.add_account) {
-        return await window.pywebview.api.add_account(accountObj);
+        // Python 端 qt_bridge 預期接收 JSON 字串
+        return await window.pywebview.api.add_account(JSON.stringify(accountObj));
     }
     return false;
 }

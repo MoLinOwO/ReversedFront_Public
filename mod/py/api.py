@@ -36,7 +36,8 @@ class Api:
     def get_active_account(self) -> Any:
         """獲取當前活動帳號"""
         return get_active_account()
-    
+
+
     def set_window_size(self, width: int, height: int) -> bool:
         """設置窗口固定大小"""
         try:

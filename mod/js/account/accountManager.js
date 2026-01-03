@@ -98,6 +98,124 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
     };
 }
 
+// 自動攔截登入並保存帳號
+export function setupLoginInterceptor(accountSection, autofillActiveAccount) {
+    const checkAndAttachInterceptor = () => {
+        // 嘗試更通用的選擇器策略
+        let formBox = document.querySelector('.Login_loginFormBox__LKcQJ');
+        
+        // 如果找不到特定 class，嘗試尋找包含密碼輸入框的容器
+        if (!formBox) {
+            const pwdInput = document.querySelector('input[type="password"]');
+            if (pwdInput) {
+                // 往上找直到找到看起來像表單容器的元素 (通常有 button)
+                let parent = pwdInput.parentElement;
+                let depth = 0;
+                while (parent && parent !== document.body && depth < 5) {
+                    if (parent.querySelector('button') || parent.querySelector('[class*="Btn"]')) {
+                        formBox = parent;
+                        break;
+                    }
+                    parent = parent.parentElement;
+                    depth++;
+                }
+            }
+        }
+
+        // 確保只綁定一次
+        if (formBox && !formBox.dataset.interceptorAttached) {
+            // 尋找按鈕：多種策略
+            let loginBtn = formBox.querySelector('.Login_formBtn__L1ZuE');
+            if (!loginBtn) loginBtn = formBox.querySelector('button');
+            if (!loginBtn) loginBtn = formBox.querySelector('input[type="submit"]');
+            if (!loginBtn) loginBtn = formBox.querySelector('[class*="Btn"]'); // 包含 Btn 的 class
+            if (!loginBtn) loginBtn = formBox.querySelector('[class*="btn"]'); // 包含 btn 的 class
+            if (!loginBtn) loginBtn = formBox.querySelector('[role="button"]'); // role="button"
+            
+            const accountInput = formBox.querySelector('input[type="text"]');
+            const passwordInput = formBox.querySelector('input[type="password"]');
+
+            if (accountInput && passwordInput) {
+                formBox.dataset.interceptorAttached = 'true';
+                
+                const saveAccount = async () => {
+                    const account = accountInput.value;
+                    const password = passwordInput.value;
+                    
+                    if (account && password) {
+                        try {
+                            // 新增或更新帳號 (後端會處理重複並更新密碼)
+                            await api.addAccount({account, password});
+
+                            // 獲取最新帳號列表以找到索引
+                            const accounts = await api.getAccounts();
+                            const idx = accounts.findIndex(a => a.account === account);
+                            
+                            if (idx !== -1) {
+                                // 更新當前選擇
+                                window.currentSelectedAccountIdx = idx;
+                                sessionStorage.setItem('currentSelectedAccountIdx', idx);
+                                
+                                // 更新 UI
+                                if (accountSection) {
+                                    renderAccountManager(accountSection, autofillActiveAccount);
+                                }
+                                
+                                // 同步音量等設定
+                                if (window.syncAudioControlsWithConfig) {
+                                    window.syncAudioControlsWithConfig(accounts[idx]);
+                                }
+                                
+                                // 同步戰報過濾
+                                if (window.syncFactionFilterFromConfig) {
+                                    setTimeout(window.syncFactionFilterFromConfig, 300);
+                                }
+                                
+                                // 同步控制面板 select
+                                const accountSelect = document.getElementById('account-select');
+                                if (accountSelect) {
+                                    accountSelect.selectedIndex = idx;
+                                    accountSelect.dispatchEvent(new Event('change', { bubbles: true }));
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to save account on login:', e);
+                        }
+                    }
+                };
+
+                if (loginBtn) {
+                    // 監聽點擊事件 (使用 mousedown 確保在頁面跳轉前觸發)
+                    loginBtn.addEventListener('mousedown', saveAccount);
+                    // 備用：click
+                    loginBtn.addEventListener('click', (e) => {
+                        // 這裡不做事，依賴 mousedown，或者如果 mousedown 沒觸發(例如鍵盤操作)
+                    });
+                }
+                
+                // 監聽 Enter 鍵
+                const handleEnter = (e) => {
+                    if (e.key === 'Enter') {
+                        saveAccount();
+                    }
+                };
+                passwordInput.addEventListener('keydown', handleEnter);
+                accountInput.addEventListener('keydown', handleEnter);
+            }
+        }
+    };
+
+    // 使用 MutationObserver 監控登入表單的出現
+    const observer = new MutationObserver((mutations) => {
+        checkAndAttachInterceptor();
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    // 立即檢查一次
+    checkAndAttachInterceptor();
+}
+
 // 自動登入功能
 window.autoLogin = function(account, password) {
     if (!location.hash.startsWith('#/users/log_in')) return;

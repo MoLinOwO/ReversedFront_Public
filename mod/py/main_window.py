@@ -222,7 +222,7 @@ class MainWindow(QMainWindow):
                 'get_accounts', 'add_account', 'delete_account', 'set_active_account', 'get_active_account',
                 'set_window_size', 'toggle_fullscreen', 'toggle_menu', 'save_yaml', 'load_yaml', 'exit_app',
                 'save_config_volume', 'get_config_volume', 'save_report_faction_filter', 'get_report_faction_filter',
-                'check_resource_exists', 'get_resource_download_status'
+                'check_resource_exists', 'get_resource_download_status', 'log'
             ];
 
             apiMethods.forEach(method => {

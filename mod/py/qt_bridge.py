@@ -97,7 +97,8 @@ class QtBridge(QObject):
         data = json.loads(data_json)
         result = self.api.save_config_volume(data) if self.api else False
         return json.dumps(result, ensure_ascii=False)
-    
+
+
     @pyqtSlot(str, result=str)
     def get_config_volume(self, target_json):
         target = json.loads(target_json) if target_json else None

@@ -1,6 +1,13 @@
 // 導入鍵盤初始化腳本與視窗管理器
 import { initKeyboardControls } from '../ui/keyboardInit.js';
 import { initWindowManager, toggleFullscreen } from '../ui/windowManager.js';
+import { setupLoginInterceptor, renderAccountManager, autofillActiveAccount } from '../account/accountManager.js';
+import { setupCustomControls, setupRankingPanelDrag } from '../ui/customControls.js';
+import { setupRankingModalEvents, updateRanking } from '../ui/rankingModal.js';
+import '../audio/globalAudioControl.js';
+import { setupMarkerInteractionOptimized } from '../map/markerInteraction.js';
+import { initializeMessageObserver } from '../ui/notificationBox.js';
+import { saveMarkerDataToYaml } from '../map/markerData.js';
 
 // 立即初始化視窗管理器（優先於其他模塊）
 if (typeof initWindowManager === 'function') {
@@ -166,14 +173,6 @@ if (document.readyState === 'loading') {
     customControlsInserted = true;
 }
 
-import '../audio/globalAudioControl.js';
-import { renderAccountManager, autofillActiveAccount } from '../account/accountManager.js';
-import { updateRanking, setupRankingModalEvents } from '../ui/rankingModal.js';
-import { setupCustomControls, setupRankingPanelDrag } from '../ui/customControls.js';
-import { setupMarkerInteractionOptimized } from '../map/markerInteraction.js';
-import { initializeMessageObserver } from '../ui/notificationBox.js';
-import { saveMarkerDataToYaml } from '../map/markerData.js';
-
 // GPU 驗證：啟動時印出 WebGL 渲染器資訊
 console.log((() => {
   try {
@@ -192,76 +191,100 @@ console.log((() => {
 // 防止重複初始化
 let markerInteractionInitialized = false;
 
-window.addEventListener('pywebviewready', async function() {
-    console.log('pywebviewready 事件觸發, window.pywebview =', !!window.pywebview);
-    
-    // 添加桌面專屬按鈕到最後的容器中
-    if (window.pywebview) {
-        const desktopBtnsContainer = document.getElementById('desktop-buttons-container');
-        if (desktopBtnsContainer && !document.getElementById('exit-app')) {
-            console.log('添加桌面專屬按鈕到容器末尾');
-            desktopBtnsContainer.innerHTML = `
-                <button id="exit-app" aria-label="退出遊戲" style="width:100%;margin-bottom:10px;background:#d9534f;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;margin-top:10px;">退出遊戲</button>
-                <button id="toggle-fullscreen" aria-label="切換全螢幕/視窗" style="width:100%;margin-bottom:0;background:#333c;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">切換全螢幕/視窗</button>
-            `;
-        }
+// 封裝 pywebview 相關的初始化邏輯
+let pywebviewFeaturesInitialized = false;
+async function initPywebviewFeatures() {
+    if (pywebviewFeaturesInitialized) return;
+    pywebviewFeaturesInitialized = true;
+
+    // 確保基礎 DOM 已插入
+    if (!document.getElementById('custom-controls')) {
+        insertCustomControlsDOM();
     }
-    
+
     // 帳號管理（僅桌面版顯示）
     const accountSection = document.getElementById('account-section');
-    if (window.pywebview) {
+    if (accountSection) {
         await renderAccountManager(accountSection, autofillActiveAccount);
         autofillActiveAccount();
+        
+        // 啟動登入攔截器
+        setupLoginInterceptor(accountSection, autofillActiveAccount);
         
         // 在帳號管理器渲染完成後，觸發音量控制同步
         setTimeout(() => {
             if (window.syncAudioControlsWithConfig) {
-                console.log('帳號管理器渲染完成，開始同步音量控制...');
                 window.syncAudioControlsWithConfig();
             }
         }, 500);
-    } else {
-        accountSection.innerHTML = '';
     }
-    // 排行榜
-    setupRankingModalEvents();
-    // 控制面板與拖拉
-    setupCustomControls();
-    setupRankingPanelDrag();
-    // 全螢幕切換
-    const fullscreenBtn = document.getElementById('toggle-fullscreen');
-    if (fullscreenBtn) {
-        fullscreenBtn.onclick = function() {
-            // 使用視窗管理器的統一方法
-            if (typeof toggleFullscreen === 'function') {
-                console.log('使用視窗管理器切換全屏');
-                toggleFullscreen();
-            } else if (window.rfToggleFullscreen) {
-                console.log('使用全局方法切換全屏');
-                window.rfToggleFullscreen();
-            } else if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen) {
-                console.log('直接使用 API 切換全屏');
-                window.pywebview.api.toggle_fullscreen();
-            } else {
-                console.warn('未偵測到任何可用的全屏切換方法');
-            }
-        };
+
+    // 添加桌面專屬按鈕到最後的容器中
+    // 確保 setupCustomControls 已經執行過，容器應該已存在
+    // 如果不存在，嘗試手動創建或等待
+    let desktopBtnsContainer = document.getElementById('desktop-buttons-container');
+    if (!desktopBtnsContainer) {
+        // 嘗試再次執行 setupCustomControls
+        setupCustomControls();
+        desktopBtnsContainer = document.getElementById('desktop-buttons-container');
     }
-    // 只初始化一次 marker 互動
-    if (!markerInteractionInitialized) {
-        setupMarkerInteractionOptimized();
-        markerInteractionInitialized = true;
+
+    if (desktopBtnsContainer && !document.getElementById('exit-app')) {
+        desktopBtnsContainer.innerHTML = `
+            <button id="exit-app" aria-label="退出遊戲" style="width:100%;margin-bottom:10px;background:#d9534f;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;margin-top:10px;">退出遊戲</button>
+            <button id="toggle-fullscreen" aria-label="切換全螢幕/視窗" style="width:100%;margin-bottom:0;background:#333c;color:#fff;border:none;padding:8px 0;border-radius:6px;cursor:pointer;">切換全螢幕/視窗</button>
+        `;
+        
+        // 綁定事件
+        const exitBtn = document.getElementById('exit-app');
+        if (exitBtn) {
+            exitBtn.onclick = function() {
+                if (window.pywebview.api.exit_app) {
+                    window.pywebview.api.exit_app();
+                }
+            };
+        }
+        const fsBtn = document.getElementById('toggle-fullscreen');
+        if (fsBtn) {
+            fsBtn.onclick = function() {
+                if (window.pywebview.api.toggle_fullscreen) {
+                    window.pywebview.api.toggle_fullscreen();
+                }
+            };
+        }
+    }
+}
+
+// 監聽 pywebviewready 事件
+window.addEventListener('pywebviewready', async function() {
+    if (window.pywebview) {
+        await initPywebviewFeatures();
     }
 });
+
+// 如果 window.pywebview 已經存在（例如腳本載入較晚），直接執行
+if (window.pywebview) {
+    initPywebviewFeatures();
+}
+
+// 通用初始化（不依賴 pywebview）
 document.addEventListener('DOMContentLoaded', async () => {
+    // ... existing code ...
+    if (!customControlsInserted) {
+        insertCustomControlsDOM();
+        customControlsInserted = true;
+    }
+    
+    setupRankingModalEvents();
+    setupCustomControls();
+    setupRankingPanelDrag();
+    
     try {
         await initializeMessageObserver(); // 初始化訊息觀察者
         if (!markerInteractionInitialized) {
             setupMarkerInteractionOptimized();
             markerInteractionInitialized = true;
         }
-        setupCustomControls(); // 確保 DOM ready 時也掛載
-        setupRankingModalEvents(); // 確保排行榜事件綁定
         
         // 初始化鍵盤事件處理 - 只處理 F11 鍵，讓 ESC 由 keyboard_handler 處理
         document.addEventListener('keydown', function(event) {

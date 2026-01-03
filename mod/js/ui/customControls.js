@@ -450,35 +450,42 @@ function exitApp() {
 }
 
 export function setupCustomControls() {
+    console.log('setupCustomControls called');
     // 快取常用節點
     const controlsPanel = getDomOrWarn('custom-controls', 'custom-controls 不存在，無法掛載控制面板事件');
     const controlsToggle = getDomOrWarn('custom-controls-toggle', 'custom-controls-toggle 不存在，無法掛載控制面板事件');
-    if (!controlsPanel || !controlsToggle) return;
+    if (!controlsPanel || !controlsToggle) {
+        console.error('setupCustomControls aborted: panel or toggle missing');
+        return;
+    }
 
     // 控制面板拖拉與展開收合
     setupPanelDrag(controlsPanel, controlsToggle);
     
     // 添加ESC浮動提示 (顯示5秒後淡出)
-    const floatingEscHint = document.createElement('div');
-    floatingEscHint.textContent = '按 ESC 打開控制面板';
-    floatingEscHint.style.position = 'fixed';
-    floatingEscHint.style.bottom = '10px';
-    floatingEscHint.style.right = '10px';
-    floatingEscHint.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-    floatingEscHint.style.color = 'white';
-    floatingEscHint.style.padding = '5px 10px';
-    floatingEscHint.style.borderRadius = '4px';
-    floatingEscHint.style.fontSize = '12px';
-    floatingEscHint.style.zIndex = '9990';
-    floatingEscHint.style.opacity = '0.7';
-    floatingEscHint.style.transition = 'opacity 1s';
-    document.body.appendChild(floatingEscHint);
-    
-    // 5 秒後淡出提示
-    setTimeout(() => {
-        floatingEscHint.style.opacity = '0';
-        setTimeout(() => floatingEscHint.remove(), 1000);
-    }, 5000);
+    if (!document.getElementById('floating-esc-hint')) {
+        const floatingEscHint = document.createElement('div');
+        floatingEscHint.id = 'floating-esc-hint';
+        floatingEscHint.textContent = '按 ESC 打開控制面板';
+        floatingEscHint.style.position = 'fixed';
+        floatingEscHint.style.bottom = '10px';
+        floatingEscHint.style.right = '10px';
+        floatingEscHint.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        floatingEscHint.style.color = 'white';
+        floatingEscHint.style.padding = '5px 10px';
+        floatingEscHint.style.borderRadius = '4px';
+        floatingEscHint.style.fontSize = '12px';
+        floatingEscHint.style.zIndex = '9990';
+        floatingEscHint.style.opacity = '0.7';
+        floatingEscHint.style.transition = 'opacity 1s';
+        document.body.appendChild(floatingEscHint);
+        
+        // 5 秒後淡出提示
+        setTimeout(() => {
+            floatingEscHint.style.opacity = '0';
+            setTimeout(() => floatingEscHint.remove(), 1000);
+        }, 5000);
+    }
 
     // 退出遊戲按鈕（可能在 pywebviewready 後才添加，延遲綁定）
     setTimeout(() => {
@@ -653,9 +660,12 @@ export function setupCustomControls() {
     
     // 添加桌面專屬按鈕容器（在所有其他元素之後）
     if (controlsPanel && !document.getElementById('desktop-buttons-container')) {
+        console.log('Creating desktop-buttons-container');
         const desktopBtnsContainer = document.createElement('div');
         desktopBtnsContainer.id = 'desktop-buttons-container';
         controlsPanel.appendChild(desktopBtnsContainer);
+    } else {
+        console.log('desktop-buttons-container already exists or panel missing');
     }
     
     // 確保對話框樣式已添加
