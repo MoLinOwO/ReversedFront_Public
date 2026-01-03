@@ -124,3 +124,10 @@ class QtBridge(QObject):
     def get_resource_download_status(self):
         result = self.api.get_resource_download_status() if self.api else {}
         return json.dumps(result, ensure_ascii=False)
+    
+    @pyqtSlot()
+    def trigger_update(self):
+        """觸發更新下載"""
+        print("收到 trigger_update 調用")
+        if self.main_window and hasattr(self.main_window, 'trigger_update'):
+            self.main_window.trigger_update()

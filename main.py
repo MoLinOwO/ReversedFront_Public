@@ -8,10 +8,8 @@ import sys
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
 
-# 版本與資源配置
-LOCAL_VERSION = "2.9"
-CLOUD_PAGE_URL = "https://cloud.vtbmoyu.com/s/JKo6TTSGaiGFAts"
-RESOURCE_SERVER_BASE = "https://media.komisureiya.com/"
+# 導入常數
+from mod.py.constants import LOCAL_VERSION, CLOUD_PAGE_URL, RESOURCE_SERVER_BASE
 
 # 導入模組
 from mod.py.config_utils import save_exe_path_to_config
@@ -74,7 +72,7 @@ if __name__ == "__main__":
     os.environ['QTWEBENGINE_CHROMIUM_FLAGS'] = (
         '--autoplay-policy=no-user-gesture-required '
         '--enable-features=VaapiVideoDecoder '
-        '--disable-features=UseChromeOSDirectVideoDecoder '
+        '--disable-features=UseChromeOSDirectVideoDecoder,CalculateNativeWinOcclusion '
         '--enable-accelerated-mjpeg-decode '
         '--enable-gpu-rasterization '
         '--ignore-gpu-blocklist '
@@ -86,6 +84,9 @@ if __name__ == "__main__":
         '--enable-webgl '
         '--enable-webgl2-compute-context '
         '--num-raster-threads=4 '
+        '--disable-background-timer-throttling '
+        '--disable-backgrounding-occluded-windows '
+        '--disable-renderer-backgrounding '
     )
     
     print("=" * 50)

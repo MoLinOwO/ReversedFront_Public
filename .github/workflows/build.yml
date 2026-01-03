@@ -87,7 +87,7 @@ jobs:
         @'
         [Setup]
         AppName=ReversedFront
-        AppVersion=2.8.0
+        AppVersion=2.9
         DefaultDirName={autopf}\ReversedFront
         DefaultGroupName=ReversedFront
         OutputDir=.
@@ -197,7 +197,7 @@ jobs:
         # 創建 control 文件
         cat > ReversedFront_2.8.0/DEBIAN/control << 'EOF'
         Package: reversedfront
-        Version: 2.8.0
+        Version: 2.9
         Section: games
         Priority: optional
         Architecture: amd64
@@ -262,7 +262,7 @@ jobs:
         generate_release_notes: true
         fail_on_unmatched_files: false
         body: |
-          ## 🎉 ReversedFront v2.8.0
+          ## 🎉 ReversedFront v2.9
           
           ### 📦 下載
           - **Windows**: ReversedFront-Setup.exe (安裝程序，已數位簽章)
