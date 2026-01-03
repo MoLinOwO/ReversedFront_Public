@@ -5,7 +5,7 @@ import sys
 import tempfile
 from PyQt6.QtWidgets import QMainWindow
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtWebEngineCore import QWebEngineSettings, QWebEngineProfile
+from PyQt6.QtWebEngineCore import QWebEngineSettings, QWebEngineProfile, QWebEngineScript
 from PyQt6.QtCore import QUrl, QTimer, pyqtSignal, QThread
 from PyQt6.QtWebChannel import QWebChannel
 import threading
@@ -123,6 +123,9 @@ class MainWindow(QMainWindow):
         # 設置 WebChannel
         self._setup_webchannel()
         
+        # 注入啟動腳本 (在頁面加載前)
+        self._inject_startup_scripts()
+        
         # 啟用控制台消息
         self.browser.page().javaScriptConsoleMessage = self.handle_console_message
         
@@ -158,6 +161,146 @@ class MainWindow(QMainWindow):
         except:
             pass
     
+    def _inject_startup_scripts(self):
+        """注入啟動腳本 (在 DocumentCreation 時執行)"""
+        script = QWebEngineScript()
+        script.setName("startup_script")
+        script.setInjectionPoint(QWebEngineScript.InjectionPoint.DocumentCreation)
+        script.setWorldId(QWebEngineScript.ScriptWorldId.MainWorld)
+        script.setRunsOnSubFrames(False)
+        
+        js_code = """
+        (function() {
+            // 1. Anti-Sleep & Visibility Override
+            try {
+                Object.defineProperty(document, 'hidden', { get: function() { return false; }, configurable: true });
+                Object.defineProperty(document, 'visibilityState', { get: function() { return 'visible'; }, configurable: true });
+                window.addEventListener('visibilitychange', function(e) { 
+                    e.stopImmediatePropagation();
+                    e.stopPropagation();
+                }, true);
+            } catch (e) {}
+
+            // 2. Qt Bridge & Resource Interceptor Setup
+            window.pywebview = window.pywebview || {};
+            window.pywebview.api = window.pywebview.api || {};
+            
+            let bridgeResolve;
+            const bridgePromise = new Promise(resolve => { bridgeResolve = resolve; });
+            
+            // 嘗試初始化 QWebChannel
+            function initChannel() {
+                if (typeof QWebChannel !== 'undefined' && typeof qt !== 'undefined' && qt.webChannelTransport) {
+                    new QWebChannel(qt.webChannelTransport, function(channel) {
+                        window.qtBridge = channel.objects.pyqt;
+                        bridgeResolve(window.qtBridge);
+                        window.dispatchEvent(new Event('pywebviewready'));
+                        console.log("[Startup] Qt Bridge initialized");
+                    });
+                    return true;
+                }
+                return false;
+            }
+            
+            // 輪詢直到 QWebChannel 可用 (因為 qwebchannel.js 在 head 中加載)
+            if (!initChannel()) {
+                const timer = setInterval(() => {
+                    if (initChannel()) clearInterval(timer);
+                }, 50);
+                // 10秒後超時停止
+                setTimeout(() => clearInterval(timer), 10000);
+            }
+
+            // 輔助函數：調用 Bridge
+            async function callBridge(method, ...args) {
+                const bridge = await bridgePromise;
+                return await bridge[method](...args);
+            }
+
+            // 定義 API 方法
+            const apiMethods = [
+                'get_accounts', 'add_account', 'delete_account', 'set_active_account', 'get_active_account',
+                'set_window_size', 'toggle_fullscreen', 'toggle_menu', 'save_yaml', 'load_yaml', 'exit_app',
+                'save_config_volume', 'get_config_volume', 'save_report_faction_filter', 'get_report_faction_filter',
+                'check_resource_exists', 'get_resource_download_status'
+            ];
+
+            apiMethods.forEach(method => {
+                window.pywebview.api[method] = async function(...args) {
+                    const result = await callBridge(method, ...args);
+                    try {
+                        // 部分方法返回 JSON 字符串，部分返回原始值
+                        if (typeof result === 'string' && (result.startsWith('{') || result.startsWith('['))) {
+                            return JSON.parse(result);
+                        }
+                        return result;
+                    } catch (e) {
+                        return result;
+                    }
+                };
+            });
+
+            // 3. 資源攔截器 (Resource Interceptor)
+            // 確保在 React 加載前就攔截所有資源請求
+            
+            const originalFetch = window.fetch;
+            window.fetch = async function(resource, init) {
+                let url = resource;
+                if (resource instanceof Request) url = resource.url;
+                
+                const match = url.match(/\\/(assets\\/passionfruit\\/|passionfruit\\/)(.+)$/);
+                if (match) {
+                    const path = match[1] + match[2];
+                    // 不等待檢查結果，直接發起檢查並繼續請求
+                    // 如果資源不存在，後端會開始下載，前端請求可能會 404
+                    // 但對於大資源，React 通常會重試或等待
+                    // 若要嚴格等待下載，需要 await check_resource_exists
+                    // 但這會阻塞所有請求，影響性能。
+                    // 這裡選擇異步觸發檢查
+                    window.pywebview.api.check_resource_exists(path).catch(() => {});
+                }
+                return originalFetch.apply(this, arguments);
+            };
+
+            const originalXhrOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function(method, url) {
+                if (typeof url === 'string') {
+                    const match = url.match(/\\/(assets\\/passionfruit\\/|passionfruit\\/)(.+)$/);
+                    if (match) {
+                        const path = match[1] + match[2];
+                        window.pywebview.api.check_resource_exists(path).catch(() => {});
+                    }
+                }
+                return originalXhrOpen.apply(this, arguments);
+            };
+            
+            // 攔截 Image.src
+            const originalImageSrc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, 'src');
+            if (originalImageSrc) {
+                Object.defineProperty(HTMLImageElement.prototype, 'src', {
+                    get: function() { return originalImageSrc.get.call(this); },
+                    set: function(url) {
+                        if (typeof url === 'string') {
+                            const match = url.match(/\\/(assets\\/passionfruit\\/|passionfruit\\/)(.+)$/);
+                            if (match) {
+                                const path = match[1] + match[2];
+                                window.pywebview.api.check_resource_exists(path).catch(() => {});
+                            }
+                        }
+                        originalImageSrc.set.call(this, url);
+                    },
+                    configurable: true
+                });
+            }
+            
+            console.log("[Startup] Resource Interceptor installed");
+        })();
+        """
+        
+        script.setSourceCode(js_code)
+        self.browser.page().scripts().insert(script)
+        print("啟動腳本已注入")
+
     def _setup_network_interceptor(self):
         """設置網絡請求攔截器"""
         profile = QWebEngineProfile.defaultProfile()
@@ -201,7 +344,7 @@ class MainWindow(QMainWindow):
         """頁面加載完成"""
         print(f"頁面加載完成: ok={ok}")
         if ok:
-            self.inject_qt_bridge()
+            # self.inject_qt_bridge() # 已由 _inject_startup_scripts 取代
             QTimer.singleShot(5000, self.check_video_status)
             QTimer.singleShot(1000, self.init_keyboard)
             # 3秒後檢查更新（給頁面足夠的初始化時間）
@@ -264,111 +407,9 @@ class MainWindow(QMainWindow):
         """
         self.browser.page().runJavaScript(check_script)
     
+    # inject_qt_bridge 已被 _inject_startup_scripts 取代，保留此方法為空或刪除
     def inject_qt_bridge(self):
-        """注入 Qt 橋接腳本"""
-        print("開始注入 Qt 橋接腳本...")
-        
-        # 注入防休眠腳本：強制覆蓋 visibilityState 與 hidden 屬性
-        # 這能防止網頁在視窗最小化或被遮擋時自動暫停
-        anti_sleep_script = """
-        (function() {
-            try {
-                Object.defineProperty(document, 'hidden', { get: function() { return false; }, configurable: true });
-                Object.defineProperty(document, 'visibilityState', { get: function() { return 'visible'; }, configurable: true });
-                
-                // 攔截 visibilitychange 事件
-                window.addEventListener('visibilitychange', function(e) { 
-                    e.stopImmediatePropagation();
-                    e.stopPropagation();
-                }, true);
-                
-                // 定期觸發一個假的滑鼠事件或類似操作，保持活躍 (可選)
-                console.log('[Anti-Sleep] 已啟用：強制頁面保持可見狀態');
-            } catch (e) {
-                console.error('[Anti-Sleep] 注入失敗:', e);
-            }
-        })();
-        """
-        self.browser.page().runJavaScript(anti_sleep_script)
-        
-        js_code = """
-        (function() {
-            console.log('初始化 Qt WebChannel...');
-            new QWebChannel(qt.webChannelTransport, function(channel) {
-                console.log('Qt WebChannel 初始化成功');
-                window.qtBridge = channel.objects.pyqt;
-                window.pywebview = {
-                    api: {
-                        get_accounts: async function() {
-                            const result = await window.qtBridge.get_accounts();
-                            return JSON.parse(result);
-                        },
-                        add_account: async function(data) {
-                            const result = await window.qtBridge.add_account(JSON.stringify(data));
-                            return JSON.parse(result);
-                        },
-                        delete_account: async function(idx) {
-                            const result = await window.qtBridge.delete_account(idx);
-                            return JSON.parse(result);
-                        },
-                        set_active_account: async function(idx) {
-                            const result = await window.qtBridge.set_active_account(idx);
-                            return JSON.parse(result);
-                        },
-                        get_active_account: async function() {
-                            const result = await window.qtBridge.get_active_account();
-                            return JSON.parse(result);
-                        },
-                        set_window_size: async function(w, h) {
-                            return await window.qtBridge.set_window_size(w, h);
-                        },
-                        toggle_fullscreen: async function() {
-                            return await window.qtBridge.toggle_fullscreen();
-                        },
-                        toggle_menu: async function() {
-                            return await window.qtBridge.toggle_menu();
-                        },
-                        save_yaml: async function(filename, content) {
-                            const result = await window.qtBridge.save_yaml(filename, content);
-                            return JSON.parse(result);
-                        },
-                        load_yaml: async function(filename) {
-                            const result = await window.qtBridge.load_yaml(filename);
-                            return JSON.parse(result);
-                        },
-                        exit_app: async function() {
-                            return await window.qtBridge.exit_app();
-                        },
-                        save_config_volume: async function(data) {
-                            const result = await window.qtBridge.save_config_volume(JSON.stringify(data));
-                            return JSON.parse(result);
-                        },
-                        get_config_volume: async function(target) {
-                            const result = await window.qtBridge.get_config_volume(JSON.stringify(target || null));
-                            return JSON.parse(result);
-                        },
-                        save_report_faction_filter: async function(faction, target) {
-                            return await window.qtBridge.save_report_faction_filter(faction, JSON.stringify(target || null));
-                        },
-                        get_report_faction_filter: async function(target) {
-                            return await window.qtBridge.get_report_faction_filter(JSON.stringify(target || null));
-                        },
-                        check_resource_exists: async function(path) {
-                            const result = await window.qtBridge.check_resource_exists(path);
-                            return JSON.parse(result);
-                        },
-                        get_resource_download_status: async function() {
-                            const result = await window.qtBridge.get_resource_download_status();
-                            return JSON.parse(result);
-                        }
-                    }
-                };
-                console.log('Qt 橋接已加載');
-                window.dispatchEvent(new Event('pywebviewready'));
-            });
-        })();
-        """
-        self.browser.page().runJavaScript(js_code)
+        pass
     
     def init_keyboard(self):
         """初始化鍵盤處理"""

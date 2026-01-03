@@ -4,7 +4,10 @@ import { $ } from '../core/utils.js';
 // 帳號管理模組
 
 // 用 window.currentSelectedAccountIdx 儲存目前選取的帳號 index
-if (typeof window.currentSelectedAccountIdx !== 'number') window.currentSelectedAccountIdx = 0;
+if (typeof window.currentSelectedAccountIdx !== 'number') {
+    const savedIdx = sessionStorage.getItem('currentSelectedAccountIdx');
+    window.currentSelectedAccountIdx = savedIdx !== null ? parseInt(savedIdx) : 0;
+}
 
 export async function renderAccountManager(accountSection, autofillActiveAccount) {
     let accounts = [];
@@ -12,7 +15,10 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
         accounts = await api.getAccounts();
     } catch(e) {}
     // 若目前選取 index 超出範圍，自動歸零
-    if (window.currentSelectedAccountIdx >= accounts.length) window.currentSelectedAccountIdx = 0;
+    if (window.currentSelectedAccountIdx >= accounts.length) {
+        window.currentSelectedAccountIdx = 0;
+        sessionStorage.setItem('currentSelectedAccountIdx', 0);
+    }
     let html = '';
     html += '<div style="margin-bottom:8px;font-size:1em;">帳號管理</div>';
     html += '<div id="account-list" style="min-height:60px;max-height:120px;overflow-y:auto;margin-bottom:8px;">';
@@ -38,6 +44,7 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
     document.querySelectorAll('input[name="account-radio"]').forEach(radio => {
         radio.onchange = async function() {
             window.currentSelectedAccountIdx = parseInt(this.value);
+            sessionStorage.setItem('currentSelectedAccountIdx', window.currentSelectedAccountIdx);
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
             // 切換帳號時自動同步音量UI（含se147_muted）
@@ -72,6 +79,7 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             await api.deleteAccount(parseInt(this.dataset.idx));
             // 若刪除的是目前選取的帳號，index 歸零
             if (window.currentSelectedAccountIdx >= accounts.length - 1) window.currentSelectedAccountIdx = 0;
+            sessionStorage.setItem('currentSelectedAccountIdx', window.currentSelectedAccountIdx);
             renderAccountManager(accountSection, autofillActiveAccount);
         };
     });
@@ -83,6 +91,7 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             await api.addAccount({account,password});
             // 新增帳號後自動選到最後一個
             window.currentSelectedAccountIdx = accounts.length;
+            sessionStorage.setItem('currentSelectedAccountIdx', window.currentSelectedAccountIdx);
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
         }

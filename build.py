@@ -164,7 +164,6 @@ def build_nuitka():
         '--include-data-dir=static=static',
         '--include-data-dir=tiles=tiles',
         '--include-data-dir=dexopt=dexopt',
-        '--include-data-dir=passionfruit=passionfruit',
         
         # 只包含 mod/data 中的 YAML 配置文件，排除證書等敏感文件
         '--include-data-files=mod/data/exit_prompts.yaml=mod/data/exit_prompts.yaml',
