@@ -240,7 +240,7 @@ jobs:
     name: 創建 Release
     needs: build
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/')
     
     steps:
     - name: 下載所有產物
@@ -265,7 +265,7 @@ jobs:
         generate_release_notes: true
         fail_on_unmatched_files: false
         body: |
-          ## 🎉 ReversedFront v2.9
+          ## 🎉 ReversedFront ${{ github.ref_name }}
           
           ### 📦 下載
           - **Windows**: ReversedFront-Setup.exe (安裝程序，已數位簽章)
