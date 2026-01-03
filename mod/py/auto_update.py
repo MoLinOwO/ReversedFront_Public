@@ -72,17 +72,33 @@ def get_cloud_latest_info(cloud_url):
         return None, None, None
 
 def try_cleanup_old_exe(prefix='ReversedFront'):
-    """嘗試清理舊版本的執行檔"""
+    """嘗試清理舊版本的執行檔與暫存的更新包"""
     try:
         exe_path = os.path.abspath(sys.argv[0])
         exe_dir = os.path.dirname(exe_path)
+        current_exe_name = os.path.basename(exe_path)
+        
         for fname in os.listdir(exe_dir):
+            file_path = os.path.join(exe_dir, fname)
+            should_delete = False
+            
+            # 1. 清理 .old 備份檔
             if fname.endswith('.old') and fname.startswith(prefix):
-                old_path = os.path.join(exe_dir, fname)
+                should_delete = True
+            
+            # 2. 清理 _Update.exe 安裝包
+            # 確保不是當前正在執行的程式
+            elif (fname.endswith('.exe') and 
+                  '_Update' in fname and 
+                  fname.startswith(prefix) and 
+                  fname.lower() != current_exe_name.lower()):
+                should_delete = True
+                
+            if should_delete:
                 for _ in range(5):
                     try:
-                        if os.path.exists(old_path):
-                            os.remove(old_path)
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
                         break
                     except Exception:
                         time.sleep(0.2)
@@ -94,6 +110,12 @@ def prepare_update_paths(filename):
     base_filename = re.sub(r'_v\d+\.\d+', '', filename)
     if not base_filename.lower().endswith('.exe'):
         base_filename += '.exe'
+        
+    # 檢查是否與當前執行檔名稱衝突
+    current_exe = os.path.basename(sys.argv[0])
+    if base_filename.lower() == current_exe.lower():
+        name, ext = os.path.splitext(base_filename)
+        base_filename = f"{name}_Update{ext}"
         
     exe_dir = os.path.dirname(sys.argv[0])
     download_path = os.path.join(exe_dir, base_filename + '.new')

@@ -49,6 +49,8 @@ class UpdateDownloadThread(QThread):
                     total_length = int(total_length)
                     import time
                     start_time = time.time()
+                    last_emit_time = 0
+                    last_percent = -1
                     
                     with open(download_path, 'wb') as f:
                         for chunk in r.iter_content(chunk_size=8192):
@@ -57,18 +59,23 @@ class UpdateDownloadThread(QThread):
                             if chunk:
                                 dl += len(chunk)
                                 f.write(chunk)
-                                done = int(50 * dl / total_length) # 0-100
                                 
-                                # 計算速度
-                                elapsed = time.time() - start_time
-                                if elapsed > 0:
-                                    speed = dl / elapsed / 1024 / 1024 # MB/s
-                                    speed_text = f"{speed:.1f} MB/s"
-                                else:
-                                    speed_text = "計算中..."
-                                    
+                                current_time = time.time()
                                 percent = int(100 * dl / total_length)
-                                self.progress_signal.emit(percent, f"{percent}% ({speed_text})")
+                                
+                                # 限制更新頻率：進度改變或超過 0.1 秒
+                                if percent != last_percent or (current_time - last_emit_time) > 0.1:
+                                    # 計算速度
+                                    elapsed = current_time - start_time
+                                    if elapsed > 0:
+                                        speed = dl / elapsed / 1024 / 1024 # MB/s
+                                        speed_text = f"{speed:.1f} MB/s"
+                                    else:
+                                        speed_text = "計算中..."
+                                        
+                                    self.progress_signal.emit(percent, f"{percent}% ({speed_text})")
+                                    last_emit_time = current_time
+                                    last_percent = percent
             
             self.finished_signal.emit(base_filename)
             
