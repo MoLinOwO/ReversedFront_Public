@@ -16,15 +16,24 @@ def get_github_latest_version(repo="MoLinOwO/ReversedFront_PC"):
         tag_name = data.get('tag_name', '')  # 例如: "v2.9.0"
         remote_version = tag_name.lstrip('v')  # 移除開頭的 v
         
-        # 查找 Windows 安裝程式
+        # 根據平台查找對應的安裝程式
         download_url = None
         filename = None
+        is_windows = sys.platform == 'win32'
+
         for asset in data.get('assets', []):
             name = asset.get('name', '')
-            if name.endswith('.exe') and 'Setup' in name:
-                download_url = asset.get('browser_download_url')
-                filename = name
-                break
+            if is_windows:
+                if name.endswith('.exe') and 'Setup' in name:
+                    download_url = asset.get('browser_download_url')
+                    filename = name
+                    break
+            else:
+                # Linux 查找 .deb 安裝包
+                if name.endswith('.deb'):
+                    download_url = asset.get('browser_download_url')
+                    filename = name
+                    break
         
         return filename, remote_version, download_url
     except Exception as e:
@@ -86,13 +95,16 @@ def try_cleanup_old_exe(prefix='ReversedFront'):
             if fname.endswith('.old') and fname.startswith(prefix):
                 should_delete = True
             
-            # 2. 清理 _Update.exe 安裝包
+            # 2. 清理 _Update 安裝包
             # 確保不是當前正在執行的程式
-            elif (fname.endswith('.exe') and 
-                  '_Update' in fname and 
+            elif ('_Update' in fname and 
                   fname.startswith(prefix) and 
                   fname.lower() != current_exe_name.lower()):
-                should_delete = True
+                if sys.platform == 'win32':
+                    if fname.endswith('.exe'):
+                        should_delete = True
+                else:
+                    should_delete = True
                 
             if should_delete:
                 for _ in range(5):
@@ -108,23 +120,59 @@ def try_cleanup_old_exe(prefix='ReversedFront'):
 def prepare_update_paths(filename):
     """準備更新相關的路徑"""
     base_filename = re.sub(r'_v\d+\.\d+', '', filename)
-    if not base_filename.lower().endswith('.exe'):
+    
+    # Windows 強制 .exe
+    if sys.platform == 'win32' and not base_filename.lower().endswith('.exe'):
         base_filename += '.exe'
+    
+    # Linux 保持原檔名 (預期是 .deb)
         
-    # 檢查是否與當前執行檔名稱衝突
-    current_exe = os.path.basename(sys.argv[0])
-    if base_filename.lower() == current_exe.lower():
-        name, ext = os.path.splitext(base_filename)
-        base_filename = f"{name}_Update{ext}"
+    # 檢查是否與當前執行檔名稱衝突 (僅 Windows 需要考慮 exe 衝突)
+    if sys.platform == 'win32':
+        current_exe = os.path.basename(sys.argv[0])
+        if base_filename.lower() == current_exe.lower():
+            name, ext = os.path.splitext(base_filename)
+            base_filename = f"{name}_Update{ext}"
         
     exe_dir = os.path.dirname(sys.argv[0])
-    download_path = os.path.join(exe_dir, base_filename + '.new')
+    download_path = os.path.join(exe_dir, filename) # 直接使用原始檔名作為下載路徑
     return base_filename, download_path
+
+def perform_linux_update(download_path):
+    """Linux .deb 更新：調用系統安裝程式"""
+    import subprocess
+    import shutil
+    
+    print(f"準備安裝更新包: {download_path}")
+    
+    try:
+        # 嘗試啟動安裝
+        # 優先嘗試 pkexec (GUI sudo) 直接調用 dpkg
+        if shutil.which('pkexec'):
+            print("正在請求權限進行安裝...")
+            subprocess.Popen(['pkexec', 'dpkg', '-i', download_path])
+        else:
+            # 回退方案：使用 xdg-open 打開文件，讓系統關聯的安裝器（如軟體中心/GDebi）處理
+            print("正在打開系統安裝器...")
+            subprocess.Popen(['xdg-open', download_path])
+        
+        # 退出當前程式，讓安裝程序接手
+        # 安裝完成後，用戶通常需要手動重新啟動應用
+        sys.exit(0)
+        
+    except Exception as e:
+        print(f"Linux 更新啟動失敗: {e}")
+        raise e
 
 def perform_restart(base_filename, download_path):
     """執行替換檔案並重啟"""
     import subprocess
     
+    # 如果是 Linux 且下載的是 .deb，走專用流程
+    if sys.platform != 'win32' and download_path.endswith('.deb'):
+        perform_linux_update(download_path)
+        return
+
     exe_dir = os.path.dirname(sys.argv[0])
     old_exe_path = os.path.abspath(sys.argv[0])
     old_exe_rename = os.path.join(exe_dir, base_filename + '.old')
@@ -146,16 +194,25 @@ def perform_restart(base_filename, download_path):
         pass
         
     # 使用 subprocess.Popen 啟動新程式
+    target_exe = os.path.join(exe_dir, base_filename)
     if sys.platform == 'win32':
         CREATE_NO_WINDOW = 0x08000000
         subprocess.Popen(
-            [os.path.join(exe_dir, base_filename)],
+            [target_exe],
             creationflags=CREATE_NO_WINDOW,
             close_fds=True
         )
     else:
+        # Linux 需要賦予執行權限
+        import stat
+        try:
+            st = os.stat(target_exe)
+            os.chmod(target_exe, st.st_mode | stat.S_IEXEC)
+        except Exception:
+            pass
+
         subprocess.Popen(
-            [os.path.join(exe_dir, base_filename)],
+            [target_exe],
             start_new_session=True
         )
         
