@@ -2,11 +2,8 @@ name: 跨平台編譯 (Nuitka)
 
 on:
   push:
-    branches: [ main, master ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:  # 允許手動觸發
 
 permissions:
