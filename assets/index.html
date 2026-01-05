@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="./favicon.ico" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,target-densityDpi=device-dpi" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Web site created using create-react-app" />
+    <link rel="apple-touch-icon" href="./logo192.png" />
+    <link rel="manifest" href="./manifest.json" />
+    <title>逆統戰：烽火</title>
+    <script type="module">
+      // Tauri v2 API injection
+      import { invoke } from 'https://esm.sh/@tauri-apps/api@2/core';
+      import { getCurrentWindow } from 'https://esm.sh/@tauri-apps/api@2/window';
+      
+      window.__TAURI__ = {
+        core: { invoke },
+        window: { getCurrentWindow }
+      };
+    </script>
+    <link href="./static/css/main.f4ae5b14.css" rel="stylesheet" />
+    <script defer="defer" src="./static/js/main.94fae2cd.js"></script>
+    <script type="module" src="./mod/js/main.bundle.js"></script>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

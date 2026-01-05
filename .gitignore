@@ -81,3 +81,7 @@ logs/
 *.bak
 *.swp
 *.cache
+
+mod/data/config.json
+
+src-tauri/target/
