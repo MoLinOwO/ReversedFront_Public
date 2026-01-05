@@ -31,6 +31,15 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
+# 原始碼保護 - 只保留打包後的 bundle
+assets/mod/js/account/
+assets/mod/js/audio/
+assets/mod/js/core/
+assets/mod/js/map/
+assets/mod/js/ui/
+assets/mod/js/index.js
+assets/mod/js/tauri_bridge.js
+
 # IDE
 .vscode/
 .idea/
