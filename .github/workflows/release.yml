@@ -54,11 +54,12 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2.0.0"
 
-      - name: Build Frontend (Webpack)
-        working-directory: assets/mod
-        run: |
-          npm install
-          npx webpack
+      # 跳過 Webpack - bundle 檔案已預先打包在 repo 中
+      # - name: Build Frontend (Webpack)
+      #   working-directory: assets/mod
+      #   run: |
+      #     npm install
+      #     npx webpack
 
       - name: Build Tauri App
         env:
