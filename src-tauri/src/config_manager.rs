@@ -14,6 +14,8 @@ pub fn get_hidden_config_dir(target: &str) -> PathBuf {
         path.push("assets");
         if target == "passionfruit" {
             path.push("passionfruit");
+        } else if target == "root" {
+            // Return assets root
         } else {
             path.push("mod");
             path.push("data");
@@ -28,8 +30,21 @@ pub fn get_hidden_config_dir(target: &str) -> PathBuf {
         let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
         let mut path = exe_path.parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
         
+        // 找到包含 assets 目錄的根目錄
+        let mut search_path = path.clone();
+        while !search_path.join("assets").exists() && search_path.parent().is_some() {
+            search_path = search_path.parent().unwrap().to_path_buf();
+        }
+        
+        // 如果找到 assets，使用該目錄作為根
+        if search_path.join("assets").exists() {
+            path = search_path.join("assets");
+        }
+        
         if target == "passionfruit" {
             path.push("passionfruit");
+        } else if target == "root" {
+            // Return assets root
         } else {
             path.push("mod");
             path.push("data");
