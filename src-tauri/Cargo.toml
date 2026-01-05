@@ -20,3 +20,14 @@ urlencoding = "2.1"
 warp = "0.3"
 num_cpus = "1.0"
 directories = "6.0.0"
+
+# 編譯速度優化
+[profile.dev]
+incremental = true
+codegen-units = 256
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+opt-level = "z"
+strip = true

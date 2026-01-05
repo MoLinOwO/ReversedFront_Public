@@ -18,11 +18,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../assets/mod/js/main.bundle.js",
-      "../assets/mod/js/main.bundle.js.LICENSE.txt",
-      "../assets/mod/js/706.main.bundle.js",
-      "../assets/mod/js/tauri_bridge.js",
-      "../assets/mod/data/**/*",
+      "../assets/mod/**/*",
       "../assets/static/**/*",
       "../assets/dexopt/**/*",
       "../assets/tiles/**/*"

@@ -22,9 +22,12 @@ pub fn get_hidden_config_dir(target: &str) -> PathBuf {
         return path;
     }
 
-    // Release mode: use system AppData
-    if let Some(proj_dirs) = ProjectDirs::from("com", "reversedfront", "app") {
-        let mut path = proj_dirs.data_local_dir().to_path_buf();
+    // Release mode: use installation directory
+    #[cfg(not(debug_assertions))]
+    {
+        let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+        let mut path = exe_path.parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
+        
         if target == "passionfruit" {
             path.push("passionfruit");
         } else {

@@ -72,30 +72,10 @@ async fn handle_resource_request(
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            // Initialize AppData directory and copy static resources if needed
-            #[cfg(not(debug_assertions))]
-            {
-                let app_data_dir = config_manager::get_hidden_config_dir("root");
-                let resource_dir = app.path().resource_dir().unwrap_or_default();
-                
-                // Copy mod/data if not exists in AppData
-                let target_mod_data = app_data_dir.join("mod").join("data");
-                if !target_mod_data.exists() {
-                    let source_mod_data = resource_dir.join("assets").join("mod").join("data");
-                    if source_mod_data.exists() {
-                        let _ = fs::create_dir_all(&target_mod_data);
-                        // Simple recursive copy
-                        if let Ok(entries) = fs::read_dir(&source_mod_data) {
-                            for entry in entries.flatten() {
-                                if let Ok(file_type) = entry.file_type() {
-                                    if file_type.is_file() {
-                                        let _ = fs::copy(entry.path(), target_mod_data.join(entry.file_name()));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            // Ensure config directory exists
+            let config_dir = config_manager::get_hidden_config_dir("data");
+            if !config_dir.exists() {
+                let _ = fs::create_dir_all(&config_dir);
             }
 
             // Dynamically allow access to the passionfruit directory
