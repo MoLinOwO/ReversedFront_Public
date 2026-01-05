@@ -68,6 +68,7 @@ main.dist/
 *.pem
 *.key
 mod/data/*.pfx
+assets/mod/data/config.json
 
 # 資源文件
 passionfruit/
