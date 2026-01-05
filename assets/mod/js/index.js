@@ -220,6 +220,5 @@ import './ui/notificationBox.js';
 import './ui/panelDrag.js';
 import './ui/rankingModal.js';
 import './ui/rankingPanelDrag.js';
-import './ui/resizewindows.js';
 import './ui/swordsIcon.js';
 import './ui/windowManager.js';
