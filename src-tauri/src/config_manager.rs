@@ -1,7 +1,14 @@
 use std::fs;
 use std::path::PathBuf;
+use std::sync::OnceLock;
 use serde_json::Value;
-use directories::ProjectDirs;
+
+// 全局資源基礎路徑
+static RESOURCE_BASE_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+pub fn set_resource_base_path(path: PathBuf) {
+    RESOURCE_BASE_PATH.set(path).ok();
+}
 
 pub fn get_hidden_config_dir(target: &str) -> PathBuf {
     // Dev mode: use local assets folder
@@ -24,22 +31,33 @@ pub fn get_hidden_config_dir(target: &str) -> PathBuf {
         return path;
     }
 
-    // Release mode: use installation directory
+    // Release mode: use Tauri resource directory
     #[cfg(not(debug_assertions))]
     {
-        let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-        let mut path = exe_path.parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
-        
-        // 找到包含 assets 目錄的根目錄
-        let mut search_path = path.clone();
-        while !search_path.join("assets").exists() && search_path.parent().is_some() {
-            search_path = search_path.parent().unwrap().to_path_buf();
-        }
-        
-        // 如果找到 assets，使用該目錄作為根
-        if search_path.join("assets").exists() {
-            path = search_path.join("assets");
-        }
+        let mut path = if let Some(base) = RESOURCE_BASE_PATH.get() {
+            base.clone()
+        } else {
+            // Fallback: try to find assets from exe location
+            let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+            let mut search_path = exe_path.parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
+            
+            // 嘗試找到 _up_/assets 或 assets 目錄
+            if search_path.join("_up_").join("assets").exists() {
+                search_path.join("_up_").join("assets")
+            } else if search_path.join("assets").exists() {
+                search_path.join("assets")
+            } else {
+                // 向上搜索
+                while !search_path.join("assets").exists() && search_path.parent().is_some() {
+                    search_path = search_path.parent().unwrap().to_path_buf();
+                }
+                if search_path.join("assets").exists() {
+                    search_path.join("assets")
+                } else {
+                    search_path
+                }
+            }
+        };
         
         if target == "passionfruit" {
             path.push("passionfruit");
@@ -50,11 +68,8 @@ pub fn get_hidden_config_dir(target: &str) -> PathBuf {
             path.push("data");
         }
         fs::create_dir_all(&path).unwrap_or_default();
-        return path;
+        path
     }
-
-    // Fallback (should not happen)
-    PathBuf::from(".")
 }
 
 pub fn get_config_file() -> PathBuf {

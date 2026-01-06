@@ -72,6 +72,15 @@ async fn handle_resource_request(
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            // 使用 Tauri 的資源目錄 API
+            let resource_path = app.path().resource_dir()
+                .expect("Failed to get resource directory");
+            
+            println!("Resource directory: {:?}", resource_path);
+            
+            // 設置全局資源路徑（需要在 config_manager 中添加）
+            config_manager::set_resource_base_path(resource_path);
+            
             // Ensure config directory exists
             let config_dir = config_manager::get_hidden_config_dir("data");
             if !config_dir.exists() {
