@@ -5,7 +5,7 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "frontendDist": ".."
+    "frontendDist": "../web"
   },
   "bundle": {
     "active": true,
@@ -18,9 +18,9 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../index.html",
-      "../manifest.json",
-      "../transporter.html",
+      "../web/index.html",
+      "../web/manifest.json",
+      "../web/transporter.html",
       "../mod/**/*",
       "../static/**/*",
       "../dexopt/**/*",
