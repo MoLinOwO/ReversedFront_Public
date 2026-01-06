@@ -79,8 +79,14 @@ async fn handle_passionfruit_request(
     let path_str = path.as_str();
     let resource_key = path_str.to_string();
     let decoded_key = urlencoding::decode(&resource_key).unwrap_or_default().to_string();
+
+    // 將 HTTP /passionfruit/... 的路徑統一映射成 ResourceManager 內部使用的
+    // "passionfruit/..." key，這樣才能：
+    // 1) 實際把檔案下載到 passionfruit 子目錄底下
+    // 2) 與 check_resource_exists("passionfruit/...") 的路徑一致
+    let full_key = format!("passionfruit/{}", decoded_key);
     
-    let response = match resource_manager.get_or_fetch(&decoded_key).await {
+    let response = match resource_manager.get_or_fetch(&full_key).await {
         Ok(Some(res)) => {
             let mime_type = match res.abs_path.extension().and_then(|e| e.to_str()) {
                 Some("png") => "image/png",
