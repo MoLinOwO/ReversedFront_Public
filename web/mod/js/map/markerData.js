@@ -24,7 +24,7 @@ export async function loadMarkerDataFromYaml() {
         // 網頁版：直接 fetch yaml 檔
         try {
             // 用相對路徑，避免靜態主機根目錄問題
-            const res = await fetch('./data/RFcity.yaml');
+            const res = await fetch('./mod/data/RFcity.yaml');
             if (!res.ok) {
                 console.warn('[markerData] fetch RFcity.yaml 失敗，HTTP 狀態:', res.status);
                 return {};

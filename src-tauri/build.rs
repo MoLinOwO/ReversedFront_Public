@@ -17,13 +17,25 @@ fn main() {
   }
   fs::create_dir_all(&resources_path).expect("Failed to create resources dir");
 
-  // Copy specific directories from web/ to src-tauri/resources/
-  let dirs_to_copy = vec!["mod", "tiles", "dexopt"];
+  // Copy specific directories and files from web/ to src-tauri/resources/
+  let dirs_to_copy = vec!["mod", "tiles", "dexopt", "static"];
+  let files_to_copy = vec!["index.html", "manifest.json", "transporter.html"];
+
+  // Copy directories
   for dir_name in dirs_to_copy {
       let src = web_path.join(dir_name);
       let dst = resources_path.join(dir_name);
       if src.exists() {
           copy_dir_recursive(&src, &dst).expect(&format!("Failed to copy {}", dir_name));
+      }
+  }
+
+  // Copy individual files
+  for file_name in files_to_copy {
+      let src = web_path.join(file_name);
+      let dst = resources_path.join(file_name);
+      if src.exists() {
+          fs::copy(&src, &dst).expect(&format!("Failed to copy {}", file_name));
       }
   }
 
