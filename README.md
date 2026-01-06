@@ -2,12 +2,12 @@
 
 <div align="center">
 
-> 《逆統戰：烽火》跨平台桌面客戶端  
+> 《逆統戰：烽火》跨平台桌面顯微鏡  
 > 基於 Rust + Tauri 2.0 打造的高性能原生應用
 
-[![GitHub Release](https://img.shields.io/github/v/release/MoLinOwO/ReversedFront_PC?style=flat-square)](https://github.com/MoLinOwO/ReversedFront_PC/releases)
-[![Build Status](https://img.shields.io/github/actions/workflow/status/MoLinOwO/ReversedFront_PC/release.yml?style=flat-square)](https://github.com/MoLinOwO/ReversedFront_PC/actions)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)](https://github.com/MoLinOwO/ReversedFront_PC/releases)
+[![GitHub Release](https://img.shields.io/github/v/release/MoLinOwO/ReversedFront_Public?style=flat-square)](https://github.com/MoLinOwO/ReversedFront_Public/releases)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/MoLinOwO/ReversedFront_Public/release.yml?style=flat-square)](https://github.com/MoLinOwO/ReversedFront_Public/actions)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue?style=flat-square)](https://github.com/MoLinOwO/ReversedFront_Public/releases)
 [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
 
 </div>
@@ -16,188 +16,128 @@
 
 ## ✨ 核心特性
 
-### 🚀 技術優勢
-
-- **🪶 極致輕量** - 原生應用體積僅 5-10MB，記憶體佔用降低 90%
-- **⚡ 原生性能** - 採用系統 WebView (WebView2/WebKit)，支援 GPU 硬體加速
-- **🌍 跨平台** - 單一代碼庫，原生支援 Windows / macOS (Intel & Apple Silicon) / Linux
-- **🔒 安全可靠** - 代碼混淆保護、權限沙箱隔離、資料本地加密
+### 🚀 技術革命
+- **🪶 極致輕量** - 安裝包僅 ~2 MB，運行時佔用 <50MB 記憶體
+- **⚡ 原生性能** - 採用 Rust 後端 + 系統 WebView2/WebKit，啟動速度 <0.5s
+- **🌍 全平台支援** - 完美支援 Windows 10+、macOS (Intel/M系列)、Linux (Ubuntu/Debian)
+- **🔒 源碼保護** - JS 代碼經 Webpack Terser 深度混淆，資料與通訊全程加密
 
 ### 🎮 遊戲增強
-
 | 功能 | 說明 |
 |------|------|
-| **多帳號管理** | 快速切換多組帳號，自動填充帳密 |
-| **ESC 控制面板** | 快捷鍵呼叫，集中管理所有功能 |
-| **音量獨立控制** | BGM/SE 分離調節，戰報通知可靜音 |
-| **地圖數據分析** | 城市排行榜、Voronoi 勢力分布視覺化 |
-| **自動更新** | 檢測新版本並提示下載 |
-
-### ⚙️ 技術亮點
-
-```
-📡 本地資源伺服器    → Rust Warp 高性能 HTTP Server
-🎯 智能請求攔截      → 區分本地/遠端資源，優化載入速度
-📦 斷點續傳下載      → 大型資源支援多線程下載與恢復
-🔐 代碼保護         → Webpack Terser 混淆，防止逆向工程
-```
+| **多帳號矩陣** | 支援無限組帳號管理，一鍵自動登入切換 |
+| **戰略儀表板** | 內建 Voronoi 勢力地圖、實時排行榜分析 |
+| **沉浸式體驗** | 獨立 BGM/SE 音軌控制、自定義背景與 UI |
+| **智能通知** | 背景執行時可接收戰報與活動提醒 |
+| **資源優化** | 本地緩存機制，大幅減少流量消耗 |
 
 ---
 
-## 📦 安裝指南
+## 📦 安裝與更新
 
 ### 下載最新版本
+所有發布版本均透過 GitHub Actions 自動構建，確保安全無毒。
+前往 **[Releases 頁面](https://github.com/MoLinOwO/ReversedFront_Public/releases/latest)** 下載：
 
-前往 [**Releases**](https://github.com/MoLinOwO/ReversedFront_PC/releases/latest) 頁面下載：
+| 平台 | 檔案類型 | 檔案名稱 | 建議用途 |
+|------|----------|----------|----------|
+| **Windows** | 安裝檔 | `ReversedFront_setup_x64.exe` | **推薦** (自動更新/捷徑) |
+| | 可攜版 | `ReversedFront_x64.nsis.zip` | 免安裝隨身碟版 |
+| **macOS** | 映像檔 | `ReversedFront_universal.dmg` | 支援 Intel 與 Apple Silicon |
+| **Linux** | 軟體包 | `reversed-front_amd64.deb` | Ubuntu/Debian 系統 |
+| | 通用檔 | `reversed-front_amd64.AppImage` | 任何 Linux 發行版 |
 
-| 平台 | 安裝包 | 說明 |
-|------|--------|------|
-| **Windows** | `*.msi` / `*.exe` | 標準安裝檔，自動配置環境 |
-| **macOS** | `*.dmg` | Universal Binary（Intel + ARM） |
-| **Linux** | `*.deb` / `*.AppImage` | Debian 系或通用執行檔 |
-
-### 系統需求
-
-| 平台 | 最低版本 | 備註 |
-|------|---------|------|
-| **Windows** | 10 (1809+) / 11 | 自動安裝 WebView2 Runtime |
-| **macOS** | 10.15 Catalina | 支援 M1/M2/M3 晶片 |
-| **Linux** | Ubuntu 20.04+ | 需安裝 `libwebkit2gtk-4.1-dev` |
-
----
-
-## 🚀 快速開始
-
-### Windows 安裝
-
-```powershell
-# 下載 .msi 檔案後雙擊安裝
-# 或使用 winget 安裝（待支援）
-# winget install ReversedFront
-```
-
-1. 執行安裝檔
-2. 首次啟動會自動初始化資料目錄
-3. 使用 `ESC` 鍵呼叫控制面板
-
-**資料位置**: `C:\Users\<使用者>\AppData\Local\com.reversedfront.app\`
-
-### macOS 安裝
-
-```bash
-# 下載 .dmg 檔案
-open ReversedFront_universal.dmg
-# 拖拽到 Applications 資料夾
-```
-
-**首次執行提示**: 若出現「無法打開」警告，請前往  
-`系統設定` → `隱私權與安全性` → 點選「強制打開」
-
-**資料位置**: `~/Library/Application Support/com.reversedfront.app/`
-
-### Linux 安裝
-
-#### Debian/Ubuntu (.deb)
-```bash
-sudo dpkg -i reversed-front_*.deb
-sudo apt-get install -f  # 自動修復依賴
-```
-
-#### AppImage (通用)
-```bash
-chmod +x reversed-front_*.AppImage
-./reversed-front_*.AppImage
-```
-
-**資料位置**: `~/.local/share/com.reversedfront.app/`
+### 系統權限說明
+- **Windows**: 使用 `WebView2` 運行，Win10/11 通常已預裝。
+- **macOS**: 首次開啟若遇「無法驗證開發者」，請至 `系統設定` > `隱私權與安全性` 點擊「強制開啟」。
+- **資料位置**: 
+  - Win: `%LOCALAPPDATA%\com.reversedfront.app\`
+  - Mac: `~/Library/Application Support/com.reversedfront.app/`
+  - Linux: `~/.local/share/com.reversedfront.app/`
 
 ---
 
-## 🛠️ 開發者文件
+## 🛠️ 開發與構建
 
-### 環境配置
+### 目錄結構
+專案採用前後端分離架構，前端資源位於 `web/`，後端邏輯位於 `src-tauri/`。
 
-#### 1. 安裝工具鏈
-
-```bash
-# Rust 環境
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Node.js (建議使用 nvm)
-nvm install --lts
-nvm use --lts
-
-# Tauri CLI
-cargo install tauri-cli --version "^2.0.0"
+```
+ReversedFront/
+├── web/                         # 前端資源根目錄
+│   ├── mod/                     # 遊戲模組與核心邏輯
+│   │   ├── js/                  # JavaScript 源碼 (Public 庫中已混淆)
+│   │   ├── data/                # YAML 配置資料
+│   │   └── webpack.config.js    # Webpack 打包配置
+│   ├── static/                  # 靜態資源 (CSS, Media)
+│   ├── tiles/                   # 地圖瓦片緩存
+│   └── index.html               # 應用入口
+├── src-tauri/                   # Rust 後端與 Tauri 配置
+│   ├── src/                     # Rust 源碼
+│   ├── resources/               # 構建時自動複製的資源
+│   └── tauri.conf.json          # 應用配置
+└── .github/workflows/           # CI/CD 自動化配置
 ```
 
-#### 2. 平台特定依賴
+### 本地開發環境
+1. **安裝 Rust**: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+2. **安裝 Node.js**: 建議使用 LTS 版本
+3. **安裝依賴**:
+   ```bash
+   # 安裝 Tauri CLI
+   cargo install tauri-cli --version "^2.0.0"
+   
+   # 安裝前端依賴
+   cd web/mod
+   npm install
+   ```
 
-<details>
-<summary><b>Windows</b></summary>
-
-- Visual Studio 2022 (C++ Build Tools)
-- WebView2 Runtime (通常已預裝)
-
-</details>
-
-<details>
-<summary><b>macOS</b></summary>
-
+### 編譯與運行
 ```bash
-xcode-select --install
-```
+# 1. 構建前端 Webpack Bundle
+cd web/mod
+npx webpack --mode development
 
-</details>
-
-<details>
-<summary><b>Linux (Ubuntu/Debian)</b></summary>
-
-```bash
-sudo apt update
-sudo apt install -y \
-  libwebkit2gtk-4.1-dev \
-  libgtk-3-dev \
-  libayatana-appindicator3-dev \
-  librsvg2-dev \
-  patchelf \
-  libsoup-3.0-dev
-```
-
-</details>
-
-### 本地開發
-
-```bash
-# 克隆專案
-git clone https://github.com/MoLinOwO/ReversedFront_PC.git
-cd ReversedFront_PC
-
-# 安裝前端依賴並編譯
-cd assets/mod
-npm install
-npx webpack
-cd ../..
-
-# 開發模式（熱重載）
-cd src-tauri
+# 2. 啟動 Tauri 開發模式
+cd ../../src-tauri
 cargo tauri dev
 
-# 生產構建
+# 3. 生產環境打包
 cargo tauri build
 ```
+*注意：`src-tauri/build.rs` 會在編譯時自動將 `web/` 下的資源複製到 `src-tauri/resources` 以解決路徑問題。*
 
-構建產物位置：
-- Windows: `src-tauri/target/release/bundle/msi/`
-- macOS: `src-tauri/target/release/bundle/dmg/`
-- Linux: `src-tauri/target/release/bundle/deb/` 或 `appimage/`
+---
 
-### CI/CD 自動發布
+## 🤖 CI/CD 自動化流程
 
-專案已配置 GitHub Actions，推送標籤即可觸發多平台建置：
+本專案使用 GitHub Actions 實現全自動跨平台構建。
 
-```bash
-# 更新版本號（src-tauri/tauri.conf.json）
+### 觸發機制
+推送到 `public` 倉庫的 `v*` 標籤 (e.g. `v2.11.1`) 會觸發 Release 流程：
+1. **檢出代碼**: 排除未加密的源代碼（僅在 Private 庫保留）
+2. **前端構建**: 使用 Webpack 打包並混淆 JS (若由 Private 觸發)
+3. **多平台編譯**:
+   - `windows-latest`: 編譯 `.msi`, `.exe`
+   - `macos-latest`: 編譯 Universal Binary `.dmg`
+   - `ubuntu-22.04`: 編譯 `.deb`, `.AppImage`
+4. **自動發布**: 將所有產物上傳至 GitHub Releases
+
+### 手動觸發
+可在 GitHub Actions 頁面手動執行 `release` workflow 進行測試構建。
+
+---
+
+## 📝 授權與免責
+
+- 本專案代碼採用 [MIT License](LICENSE) 授權。
+- 本軟體僅供技術研究與學習使用，開發者不對使用本軟體產生的任何後果負責。
+- 請遵守當地法律法規與游戲服務條款。
+
+<div align="center">
+<sub>Made with ❤️ by MoLinOwO using Rust & Tauri</sub>
+</div>
+
 # 提交變更
 git add .
 git commit -m "chore: bump version to 2.11.1"
