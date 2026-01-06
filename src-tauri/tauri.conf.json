@@ -18,13 +18,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../web/index.html",
-      "../web/manifest.json",
-      "../web/transporter.html",
-      "../mod/**/*",
-      "../static/**/*",
-      "../dexopt/**/*",
-      "../tiles/**/*"
+      "../web/**/*"
     ],
     "targets": "all"
   },

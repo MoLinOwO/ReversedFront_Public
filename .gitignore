@@ -1,5 +1,5 @@
 # Node.js
-mod/node_modules/
+web/mod/node_modules/
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -7,13 +7,13 @@ yarn-error.log*
 package-lock.json
 
 # 原始碼保護 - 只保留打包後的 bundle
-mod/js/account/
-mod/js/audio/
-mod/js/core/
-mod/js/map/
-mod/js/ui/
-mod/js/index.js
-mod/js/tauri_bridge.js
+web/mod/js/account/
+web/mod/js/audio/
+web/mod/js/core/
+web/mod/js/map/
+web/mod/js/ui/
+web/mod/js/index.js
+web/mod/js/tauri_bridge.js
 
 # IDE
 .vscode/
@@ -51,11 +51,11 @@ main.dist/
 *.p12
 *.pem
 *.key
-mod/data/*.pfx
-mod/data/config.json
+web/mod/data/*.pfx
+web/mod/data/config.json
 
 # 資源文件
-passionfruit/
+web/passionfruit/
 
 # 日誌
 *.log
@@ -67,6 +67,6 @@ logs/
 *.swp
 *.cache
 
-mod/data/config.json
+web/mod/data/config.json
 
 src-tauri/target/
