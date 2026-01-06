@@ -31,38 +31,22 @@ pub fn get_hidden_config_dir(target: &str) -> PathBuf {
         return path;
     }
 
-    // Release mode: use Tauri resource directory
+    // Release mode: use Tauri resource directory or exe parent
     #[cfg(not(debug_assertions))]
     {
         let mut path = if let Some(base) = RESOURCE_BASE_PATH.get() {
+            // Tauri resource_dir 已經是正確的根目錄
             base.clone()
         } else {
-            // Fallback: try to find assets from exe location
+            // Fallback: use exe parent directory
             let exe_path = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
-            let mut search_path = exe_path.parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf();
-            
-            // 嘗試找到 _up_/assets 或 assets 目錄
-            if search_path.join("_up_").join("assets").exists() {
-                search_path.join("_up_").join("assets")
-            } else if search_path.join("assets").exists() {
-                search_path.join("assets")
-            } else {
-                // 向上搜索
-                while !search_path.join("assets").exists() && search_path.parent().is_some() {
-                    search_path = search_path.parent().unwrap().to_path_buf();
-                }
-                if search_path.join("assets").exists() {
-                    search_path.join("assets")
-                } else {
-                    search_path
-                }
-            }
+            exe_path.parent().unwrap_or_else(|| std::path::Path::new(".")).to_path_buf()
         };
         
         if target == "passionfruit" {
             path.push("passionfruit");
         } else if target == "root" {
-            // Return assets root
+            // Return root
         } else {
             path.push("mod");
             path.push("data");

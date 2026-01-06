@@ -18,13 +18,13 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "../assets/index.html",
-      "../assets/manifest.json",
-      "../assets/transporter.html",
-      "../assets/mod/**/*",
-      "../assets/static/**/*",
-      "../assets/dexopt/**/*",
-      "../assets/tiles/**/*"
+      "../index.html",
+      "../manifest.json",
+      "../transporter.html",
+      "../mod/**/*",
+      "../static/**/*",
+      "../dexopt/**/*",
+      "../tiles/**/*"
     ],
     "targets": "all"
   },
