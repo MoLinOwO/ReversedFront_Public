@@ -1,4 +1,4 @@
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use serde_json::Value;
 use crate::AppState;
 use crate::account_manager;
@@ -72,6 +72,7 @@ pub fn get_resource_download_status(state: State<AppState>) -> Value {
 
 #[tauri::command]
 pub fn exit_app(app: AppHandle) {
+    // 關閉所有視窗並退出應用
     app.exit(0);
 }
 
@@ -133,4 +134,19 @@ pub async fn check_for_updates(app: AppHandle) -> Value {
 #[tauri::command]
 pub async fn perform_update(app: AppHandle, url: String, filename: String) -> Result<(), String> {
     updater::download_and_install(app, &url, &filename).await
+}
+
+#[tauri::command]
+pub fn toggle_fullscreen(app: AppHandle) -> Result<bool, String> {
+    if let Some(window) = app.get_webview_window("main") {
+        let is_fullscreen = window.is_fullscreen()
+            .map_err(|e| format!("Failed to get fullscreen state: {}", e))?;
+        
+        window.set_fullscreen(!is_fullscreen)
+            .map_err(|e| format!("Failed to set fullscreen: {}", e))?;
+        
+        Ok(!is_fullscreen)
+    } else {
+        Err("Main window not found".to_string())
+    }
 }

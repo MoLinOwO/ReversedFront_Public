@@ -1,0 +1,33 @@
+{
+  "name": "reversedfront",
+  "version": "1.0.0",
+  "description": "<div align=\"center\">",
+  "main": "index.js",
+  "scripts": {
+    "tauri": "tauri",
+    "build": "tauri build",
+    "dev": "tauri dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MoLinOwO/ReversedFront_PC.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/MoLinOwO/ReversedFront_PC/issues"
+  },
+  "homepage": "https://github.com/MoLinOwO/ReversedFront_PC#readme",
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-env": "^7.28.5",
+    "@tauri-apps/cli": "^2.9.6",
+    "babel-loader": "^10.0.0",
+    "terser-webpack-plugin": "^5.3.16",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1"
+  }
+}
