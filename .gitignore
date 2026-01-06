@@ -32,13 +32,13 @@ yarn-error.log*
 package-lock.json
 
 # 原始碼保護 - 只保留打包後的 bundle
-assets/mod/js/account/
-assets/mod/js/audio/
-assets/mod/js/core/
-assets/mod/js/map/
-assets/mod/js/ui/
-assets/mod/js/index.js
-assets/mod/js/tauri_bridge.js
+mod/js/account/
+mod/js/audio/
+mod/js/core/
+mod/js/map/
+mod/js/ui/
+mod/js/index.js
+mod/js/tauri_bridge.js
 
 # IDE
 .vscode/
@@ -77,7 +77,7 @@ main.dist/
 *.pem
 *.key
 mod/data/*.pfx
-assets/mod/data/config.json
+mod/data/config.json
 
 # 資源文件
 passionfruit/
