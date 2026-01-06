@@ -40,7 +40,7 @@ async function getCurrentAccountData() {
     const selected = getCurrentSelectedAccount();
     if (!selected) return null;
     try {
-        const accounts = await window.pywebview.api.get_accounts();
+        const accounts = await window.__TAURI__.core.invoke('get_accounts');
         if (accounts && accounts.length > 0) {
             // 僅用帳號名稱（必要時可加密碼）比對
             let acc = accounts.find(a => a.account === selected.account);
@@ -213,12 +213,12 @@ function createFactionFilterDropdown(controlsPanel) {
 
     // 處理值變更
     async function handleFilterChange(value) {
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.save_report_faction_filter) {
+        if (!window.__TAURI__ && window.__TAURI__?.core) {
             try {
                 // 獲取當前帳號資訊用於多實例隔離
                 const targetAccount = await getCurrentAccountData();
                 console.log('[rf-faction-filter] 觸發 save_report_faction_filter:', value, targetAccount);
-                const result = await window.pywebview.api.save_report_faction_filter(value, targetAccount);
+                const result = await window.__TAURI__.core.invoke('save_report_faction_filter', { value, targetAccount });
                 console.log('[rf-faction-filter] save_report_faction_filter 回傳:', result);
             } catch (e) {
                 console.error('保存戰報篩選設定失敗:', e);
@@ -231,7 +231,7 @@ function createFactionFilterDropdown(controlsPanel) {
 
     // 初始化選項，支援 pywebview 及網頁版
     async function syncFactionFilterFromConfig(retry = 0) {
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
+        if (!window.__TAURI__ && window.__TAURI__?.core) {
             try {
                 // 獲取當前帳號資訊用於多實例隔離
                 const targetAccount = await getCurrentAccountData();
@@ -240,7 +240,7 @@ function createFactionFilterDropdown(controlsPanel) {
                     setTimeout(() => syncFactionFilterFromConfig(retry + 1), 200);
                     return;
                 }
-                const val = await window.pywebview.api.get_report_faction_filter(targetAccount);
+                const val = await window.__TAURI__.core.invoke('get_report_faction_filter', { targetAccount });
                 // 強制同步值
                 if (val && options.includes(val)) {
                     customSelect.setValue(val);
@@ -356,16 +356,16 @@ function addDialogStyles() {
 
 // 切換全屏模式
 function toggleFullscreen() {
-    if (window.pywebview?.api) {
+    if (!window.__TAURI__?.api) {
         const isCurrentlyFullScreen = document.fullscreenElement ||
             document.webkitFullscreenElement ||
             document.mozFullScreenElement ||
             document.msFullscreenElement;
         const targetMode = isCurrentlyFullScreen ? 'normal' : 'fullscreen';
-        if (window.pywebview.api.set_window_mode) {
-            window.pywebview.api.set_window_mode(targetMode);
+        if (!window.__TAURI__.core.set_window_mode) {
+            window.__TAURI__.core.invoke('set_window_mode', { targetMode });
         }
-        window.pywebview.api.toggle_fullscreen();
+        window.__TAURI__.core.invoke('toggle_fullscreen');
         console.log('[控制面板] 切換全屏模式，預期狀態:', targetMode);
     }
 }
@@ -382,9 +382,9 @@ function showDownloadStatus() {
 
 // 顯示音量設定
 function showVolumeSettings() {
-    if (window.pywebview?.api) {
+    if (!window.__TAURI__?.api) {
         // 獲取當前音量設定
-        window.pywebview.api.get_config_volume().then(volume => {
+        window.__TAURI__.core.invoke('get_config_volume', {  }).then(volume => {
             // 創建對話框
             const dialog = document.createElement('div');
             dialog.className = 'rf-download-status'; // 重用樣式
@@ -422,7 +422,7 @@ function showVolumeSettings() {
                     se147Muted: document.getElementById('se147-muted').checked
                 };
                 
-                window.pywebview.api.save_config_volume(newVolume).then(() => {
+                window.__TAURI__.core.invoke('save_config_volume', { newVolume }).then(() => {
                     dialog.remove();
                     
                     // 如果有 AudioManager，立即應用設定
@@ -440,13 +440,8 @@ function showVolumeSettings() {
 
 // 退出應用
 function exitApp() {
-    if (window.pywebview?.api) {
-        if (confirm('確定要退出應用嗎？')) {
-            window.pywebview.api.exit_app();
-        }
-    } else {
-        loadExitPromptsAndShow();
-    }
+    // 始終顯示自訂退出確認對話框
+    loadExitPromptsAndShow();
 }
 
 export function setupCustomControls() {
@@ -548,14 +543,14 @@ export function setupCustomControls() {
         
         // 設置定期更新下載狀態（優化版）
         function updateControlPanelDownloadStatus() {
-            if (!window.pywebview?.api) return;
+            if (!window.__TAURI__?.api) return;
             
             // 使用 Promise 以提高可靠性
             // 檢查是否正在卸載頁面，如果是則不執行
             if (window.isUnloading) return;
 
             Promise.resolve()
-                .then(() => window.pywebview.api.get_resource_download_status())
+                .then(() => window.__TAURI__.core.invoke('get_resource_download_status', {  }))
                 .then(status => {
                     if (window.isUnloading) return;
                     const statusArea = document.getElementById('rf-download-status-area');

@@ -1,5 +1,19 @@
-// 導入 Tauri Bridge
-import '../tauri_bridge.js';
+// 入口腳本
+// Tauri API 工具函數
+const invoke = () => window.__TAURI__?.core?.invoke;
+const toggleControlPanel = () => {
+    const panel = document.getElementById('custom-controls');
+    const toggle = document.getElementById('custom-controls-toggle');
+    if (panel && toggle) {
+        if (panel.style.display === 'none' || !panel.style.display) {
+            panel.style.display = 'block';
+            toggle.style.display = 'none';
+        } else {
+            panel.style.display = 'none';
+            toggle.style.display = 'flex';
+        }
+    }
+};
 // 導入鍵盤初始化腳本與視窗管理器
 import { initKeyboardControls } from '../ui/keyboardInit.js';
 import { initWindowManager, toggleFullscreen } from '../ui/windowManager.js';
@@ -40,8 +54,8 @@ function insertCustomControlsDOM() {
     if (document.getElementById('custom-controls-toggle')) return; // 已插入則跳過
     const main = document.querySelector('main') || document.body;
     // 判斷是否 pywebview 或 Tauri（延遲檢查以確保 Qt WebChannel 已注入）
-    const isDesktop = !!window.pywebview || (window.__TAURI__ && !!window.__TAURI__.core);
-    console.log('insertCustomControlsDOM: isDesktop =', isDesktop, 'window.pywebview =', !!window.pywebview, 'Tauri =', !!(window.__TAURI__ && window.__TAURI__.core));
+    const isDesktop = !!window.__TAURI__ || (window.__TAURI__ && !!window.__TAURI__.core);
+    console.log('insertCustomControlsDOM: isDesktop =', isDesktop, 'window.__TAURI__ =', !!window.__TAURI__, 'Tauri =', !!(window.__TAURI__ && window.__TAURI__.core));
     // 懸浮按鈕位置：桌面版中央，網頁版左上
     const toggleBtnStyle = isDesktop
         ? 'position:fixed;top:20%;left:50%;' // 不加 transform
@@ -161,7 +175,7 @@ function insertCustomControlsDOM() {
 // 但要足夠早，讓後續代碼能找到這些 DOM 元素
 let customControlsInserted = false;
 
-// DOMContentLoaded 時插入 DOM（確保在 pywebviewready 之前有基礎 DOM）
+// DOMContentLoaded 時插入 DOM
 document.addEventListener('DOMContentLoaded', () => {
     if (!customControlsInserted) {
         console.log('DOMContentLoaded: 調用 insertCustomControlsDOM');
@@ -246,31 +260,31 @@ async function initPywebviewFeatures() {
         const exitBtn = document.getElementById('exit-app');
         if (exitBtn) {
             exitBtn.onclick = function() {
-                if (window.pywebview.api.exit_app) {
-                    window.pywebview.api.exit_app();
+                if (!window.__TAURI__.core.exit_app) {
+                    window.__TAURI__.core.invoke('exit_app');
                 }
             };
         }
         const fsBtn = document.getElementById('toggle-fullscreen');
         if (fsBtn) {
             fsBtn.onclick = function() {
-                if (window.pywebview.api.toggle_fullscreen) {
-                    window.pywebview.api.toggle_fullscreen();
+                if (!window.__TAURI__.core.toggle_fullscreen) {
+                    window.__TAURI__.core.invoke('toggle_fullscreen');
                 }
             };
         }
     }
 }
 
-// 監聽 pywebviewready 事件
-window.addEventListener('pywebviewready', async function() {
-    if (window.pywebview) {
+// Tauri 環境下直接初始化
+if (window.__TAURI__) {
+    document.addEventListener('DOMContentLoaded', async () => {
         await initPywebviewFeatures();
-    }
-});
+    });
+}
 
-// 如果 window.pywebview 已經存在（例如腳本載入較晚），直接執行
-if (window.pywebview) {
+// Tauri 環境檢查
+if (window.__TAURI__ && document.readyState !== 'loading') {
     initPywebviewFeatures();
 }
 
@@ -298,8 +312,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             // 僅處理 F11 鍵 - 切換全屏
             if (event.key === 'F11' || event.keyCode === 122) {
                 console.log('entrypoint.js 捕獲F11按鍵，觸發全屏切換');
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen) {
-                    window.pywebview.api.toggle_fullscreen();
+                if (!window.__TAURI__ && window.__TAURI__?.core) {
+                    window.__TAURI__.core.invoke('toggle_fullscreen');
                     event.preventDefault();
                     return false;
                 }
@@ -311,7 +325,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 額外的音量控制同步檢查
         // 延遲執行以確保所有模組都已載入
         setTimeout(() => {
-            if (window.pywebview && window.syncAudioControlsWithConfig) {
+            if (!window.__TAURI__ && window.syncAudioControlsWithConfig) {
                 console.log('DOMContentLoaded: 觸發額外的音量控制同步檢查');
                 window.syncAudioControlsWithConfig();
             }
@@ -366,7 +380,7 @@ if (window.setupMarkerInteractionOptimized) {
     const origSetupMarkerInteractionOptimized = window.setupMarkerInteractionOptimized;
     window.setupMarkerInteractionOptimized = function(...args) {
         origSetupMarkerInteractionOptimized.apply(this, args);
-        if (!window.pywebview) {
+        if (!window.__TAURI__) {
             // 移除所有 marker 的 dblclick 事件
             setTimeout(() => {
                 document.querySelectorAll('[class^="PortalMap_marker"], [class^="PortalMap_markerCapital"]').forEach(marker => {

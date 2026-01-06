@@ -221,4 +221,14 @@ import './ui/panelDrag.js';
 import './ui/rankingModal.js';
 import './ui/rankingPanelDrag.js';
 import './ui/swordsIcon.js';
-import './ui/windowManager.js';
+import { initWindowManager } from './ui/windowManager.js';
+
+// 初始化視窗管理器
+document.addEventListener('DOMContentLoaded', () => {
+    initWindowManager();
+});
+
+// 如果 DOM 已經載入完成，立即初始化
+if (document.readyState !== 'loading') {
+    initWindowManager();
+}

@@ -12,7 +12,7 @@ export async function saveMarkerDataToYaml(markerData) {
 
 export async function loadMarkerDataFromYaml() {
     // 桌面版（pywebview）
-    if (window.pywebview) {
+    if (!window.__TAURI__) {
         try {
             const yamlStr = await api.loadYaml(YAML_FILE);
             return YAML.load(yamlStr) || {};

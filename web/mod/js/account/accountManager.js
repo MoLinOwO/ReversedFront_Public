@@ -48,9 +48,9 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
             // 切換帳號時自動同步音量UI（含se147_muted）
-            if (window.syncAudioControlsWithConfig && window.pywebview && window.pywebview.api) {
+            if (window.syncAudioControlsWithConfig && window.__TAURI__?.core) {
                 try {
-                    const accounts = await window.pywebview.api.get_accounts();
+                    const accounts = await window.__TAURI__.core.invoke('get_accounts');
                     const accountIdx = parseInt(this.value);
                     if (accounts && accountIdx < accounts.length) {
                         const targetAccount = accounts[accountIdx];

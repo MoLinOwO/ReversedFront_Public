@@ -3,9 +3,9 @@ export async function loadExitPromptsAndShow() {
     let prompts = [
         { message: '確認要離開 逆統戰：烽火 嗎？', confirm: '確定', cancel: '取消' }
     ];
-    if (window.pywebview && window.pywebview.api && window.pywebview.api.load_yaml) {
+    if (window.__TAURI__?.core) {
         try {
-            const yamlStr = await window.pywebview.api.load_yaml('exit_prompts.yaml');
+            const yamlStr = await window.__TAURI__.core.invoke('load_yaml', { filename: 'exit_prompts.yaml' });
             if (yamlStr) {
                 let loaded = null;
                 if (window.YAML && window.YAML.load) {
@@ -52,7 +52,7 @@ export function showExitConfirm(prompt) {
       </style>
     `;
     document.body.appendChild(overlay);
-    document.getElementById('exit-confirm-yes').onclick = function() {
+    document.getElementById('exit-confirm-yes').onclick = async function() {
         // 顯示關閉中的訊息
         const dialogContent = overlay.querySelector('div > div:first-child');
         if (dialogContent) {
@@ -67,24 +67,14 @@ export function showExitConfirm(prompt) {
             btn.style.cursor = 'not-allowed';
         });
         
-        // 調用退出API
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.exit_app) {
-            // 調用API後，設置一個備用的強制關閉計時器
-            window.pywebview.api.exit_app();
-            
-            // 如果3秒後還在運行，嘗試強制關閉窗口
-            setTimeout(() => {
-                try {
-                    window.close();
-                } catch(e) {}
-                
-                // 如果還在運行，顯示提示
-                setTimeout(() => {
-                    if (dialogContent) {
-                        dialogContent.textContent = '請手動關閉應用視窗';
-                    }
-                }, 2000);
-            }, 3000);
+        // 調用退出API（直接關閉）
+        if (window.__TAURI__?.core) {
+            try {
+                await window.__TAURI__.core.invoke('exit_app');
+            } catch(e) {
+                console.error('退出失敗:', e);
+                window.close();
+            }
         } else {
             window.close();
         }

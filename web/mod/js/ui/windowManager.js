@@ -26,9 +26,9 @@ let f11HandlerInitialized = false;
 
 /**
  * 切換全屏顯示
- * 使用統一的方法調用 API
+ * 使用 Tauri API 調用後端
  */
-export function toggleFullscreen() {
+export async function toggleFullscreen() {
     // 防止短時間內重複觸發
     const now = Date.now();
     if (now - windowState.lastToggleTime < 500) {
@@ -40,73 +40,24 @@ export function toggleFullscreen() {
     console.log('視窗管理器: 切換全屏顯示');
     
     try {
-        // 獲取當前全屏狀態
-        const isCurrentlyFullScreen = document.fullscreenElement || 
-            document.webkitFullscreenElement || 
-            document.mozFullScreenElement ||
-            document.msFullscreenElement;
-        
-        // 更新全局狀態
-        windowState.isFullScreen = !!isCurrentlyFullScreen;
-        
         // 保存面板狀態（在全屏切換前）
         savePanelState();
         
-        // 只有當從全屏切換到窗口模式時，才設置固定窗口大小
-        if (windowState.isFullScreen) {
-            // 當前是全屏，即將切換到窗口模式
-            // 使用 JS 向 Python 發送請求，設置固定窗口大小
-            try {
-                if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.set_window_size === 'function') {
-                    console.log('視窗管理器: 將在退出全屏後設置固定窗口大小', windowState.fixedWidth, windowState.fixedHeight);
-                    // 將當前狀態標記為即將從全屏退出
-                    windowState.exitingFullscreen = true;
-                }
-            } catch(e) {
-                console.error('視窗管理器: 處理全屏退出失敗', e);
-            }
+        // 調用 Tauri 後端切換全屏
+        if (window.__TAURI__ && window.__TAURI__.core) {
+            console.log('視窗管理器: 調用 Tauri API 切換全屏');
+            const newFullscreenState = await window.__TAURI__.core.invoke('toggle_fullscreen');
+            windowState.isFullScreen = newFullscreenState;
+            console.log('視窗管理器: 全屏狀態已切換為', newFullscreenState);
         } else {
-            // 當前是窗口模式，即將切換到全屏
-            // 保存當前窗口大小，以便在返回窗口模式時使用
-            windowState.savedWidth = window.innerWidth || windowState.fixedWidth;
-            windowState.savedHeight = window.innerHeight || windowState.fixedHeight;
-            console.log(`視窗管理器: 保存當前窗口大小 ${windowState.savedWidth}x${windowState.savedHeight}`);
-        }
-        
-        // 調用 API 切換全屏
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.toggle_fullscreen) {
-            console.log('視窗管理器: 調用 pywebview API 切換全屏');
-            window.pywebview.api.toggle_fullscreen();
-        } else {
-            console.warn('視窗管理器: 找不到 pywebview API');
+            console.warn('視窗管理器: Tauri API 不可用，使用備用方法');
             // 使用瀏覽器原生方法作為備用
             fallbackToggleFullscreen();
         }
         
-        // 延遲恢復面板狀態和確保窗口大小
+        // 延遲恢復面板狀態
         setTimeout(() => {
             restorePanelState();
-            
-            // 再次檢查當前狀態
-            const isStillFullScreen = document.fullscreenElement || 
-                document.webkitFullscreenElement || 
-                document.mozFullScreenElement ||
-                document.msFullscreenElement;
-            
-            // 只有當之前是全屏且現在不是全屏，才設置固定窗口大小
-            if (windowState.exitingFullscreen && !isStillFullScreen && 
-                window.pywebview && window.pywebview.api && 
-                typeof window.pywebview.api.set_window_size === 'function') {
-                
-                console.log('視窗管理器: 從全屏退出，設置固定窗口大小');
-                window.pywebview.api.set_window_size(windowState.fixedWidth, windowState.fixedHeight);
-                
-                // 重設標記
-                windowState.exitingFullscreen = false;
-            }
-            
-            // 更新全屏狀態
-            windowState.isFullScreen = !!isStillFullScreen;
         }, 300);
     } catch(e) {
         console.error('視窗管理器: 切換全屏失敗', e);
@@ -114,8 +65,6 @@ export function toggleFullscreen() {
         // 在失敗時嘗試原生方法
         try {
             fallbackToggleFullscreen();
-            
-            // 還原面板狀態
             setTimeout(restorePanelState, 300);
         } catch(e2) {
             console.error('視窗管理器: 備用全屏切換也失敗', e2);
@@ -367,10 +316,3 @@ function handleFullscreenChange() {
     setTimeout(restorePanelState, 200);
 }
 
-// 自動初始化
-document.addEventListener('DOMContentLoaded', initWindowManager);
-
-// 如果文檔已載入，立即初始化
-if (document.readyState !== 'loading') {
-    initWindowManager();
-}

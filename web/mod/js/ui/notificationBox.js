@@ -26,7 +26,7 @@ async function getCurrentAccountData() {
     if (!selected) return null;
     
     try {
-        const accounts = await window.pywebview.api.get_accounts();
+        const accounts = await window.__TAURI__.core.invoke('get_accounts');
         if (accounts && selected.accountIdx < accounts.length) {
             return accounts[selected.accountIdx];
         }
@@ -266,11 +266,11 @@ export async function initializeMessageObserver() {
     });
 
     // 初始化過濾條件
-    if (window.pywebview && window.pywebview.api && window.pywebview.api.get_report_faction_filter) {
+    if (!window.__TAURI__ && window.__TAURI__?.core) {
         try {
             // 獲取當前帳號資訊用於多實例隔離
             const targetAccount = await getCurrentAccountData();
-            const val = await window.pywebview.api.get_report_faction_filter(targetAccount);
+            const val = await window.__TAURI__.core.invoke('get_report_faction_filter', { targetAccount });
             currentFactionFilter = val || '全部';
         } catch (e) {
             console.error('獲取戰報篩選設定失敗:', e);

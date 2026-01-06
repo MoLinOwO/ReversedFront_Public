@@ -7,6 +7,7 @@ pub mod updater;
 use tauri::Manager;
 use std::sync::Arc;
 use std::fs;
+use std::path::PathBuf;
 use resource_manager::ResourceManager;
 use warp::{Filter, http::StatusCode, http::Response};
 
@@ -14,7 +15,64 @@ pub struct AppState {
     pub resource_manager: Arc<ResourceManager>,
 }
 
-async fn handle_resource_request(
+// 提供靜態前端檔案
+async fn handle_static_file(
+    path: warp::path::Tail,
+    resource_base: PathBuf,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    let path_str = path.as_str();
+    
+    // 處理根路徑
+    let file_path = if path_str.is_empty() || path_str == "/" {
+        resource_base.join("index.html")
+    } else {
+        resource_base.join(path_str)
+    };
+    
+    // 安全檢查：防止路徑遍歷
+    if !file_path.starts_with(&resource_base) {
+        return Ok(Response::builder()
+            .status(StatusCode::FORBIDDEN)
+            .body(Vec::new())
+            .unwrap());
+    }
+    
+    match fs::read(&file_path) {
+        Ok(data) => {
+            let mime_type = match file_path.extension().and_then(|e| e.to_str()) {
+                Some("html") => "text/html; charset=utf-8",
+                Some("js") => "application/javascript; charset=utf-8",
+                Some("css") => "text/css; charset=utf-8",
+                Some("json") => "application/json",
+                Some("png") => "image/png",
+                Some("jpg") | Some("jpeg") => "image/jpeg",
+                Some("gif") => "image/gif",
+                Some("svg") => "image/svg+xml",
+                Some("ico") => "image/x-icon",
+                Some("mp3") => "audio/mpeg",
+                Some("mp4") => "video/mp4",
+                Some("webm") => "video/webm",
+                Some("yaml") | Some("yml") => "text/yaml",
+                _ => "application/octet-stream",
+            };
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", mime_type)
+                .header("Cache-Control", "no-cache")
+                .body(data)
+                .unwrap())
+        }
+        Err(_) => {
+            Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Vec::new())
+                .unwrap())
+        }
+    }
+}
+
+async fn handle_passionfruit_request(
     path: warp::path::Tail,
     resource_manager: Arc<ResourceManager>
 ) -> Result<impl warp::Reply, warp::Rejection> {
@@ -32,11 +90,6 @@ async fn handle_resource_request(
                 Some("webm") => "video/webm",
                 Some("mp3") => "audio/mpeg",
                 Some("wav") => "audio/wav",
-                Some("html") => "text/html",
-                Some("js") => "text/javascript",
-                Some("css") => "text/css",
-                Some("json") => "application/json",
-                Some("yaml") | Some("yml") => "text/yaml",
                 _ => "application/octet-stream",
             };
 
@@ -49,7 +102,7 @@ async fn handle_resource_request(
             .status(StatusCode::NOT_FOUND)
             .body(Vec::new()),
         Err(e) => {
-            eprintln!("[HTTP] Failed to serve {}: {}", decoded_key, e);
+            eprintln!("[HTTP] Failed to serve passionfruit resource {}: {}", decoded_key, e);
             Response::builder()
                 .status(StatusCode::BAD_GATEWAY)
                 .body(Vec::new())
@@ -72,18 +125,24 @@ async fn handle_resource_request(
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
-            // 使用 Tauri 的資源目錄 API
-            let resource_path = app.path().resource_dir()
-                .expect("Failed to get resource directory");
+            // 開發 / 生產共用：決定前端資源根目錄
+            let web_root = if cfg!(debug_assertions) {
+                // 開發模式：使用專案目錄下的 web/
+                std::env::current_dir()
+                    .unwrap_or_else(|_| std::path::PathBuf::from("."))
+                    .join("web")
+            } else {
+                // 生產模式：使用 Tauri 的資源目錄
+                app.path()
+                    .resource_dir()
+                    .expect("Failed to get resource directory")
+            };
             
-            println!("Resource directory: {:?}", resource_path);
-            
-            // 設置全局資源路徑（Resource path now points to a flattened structure usually, 
-            // but since we copy to resources/, and include resources/**/*,
-            // the structure in resource_dir will be resources/mod/...
-            // So we join "resources" here to keep the rest of the code working with base path.
-            let resource_base = resource_path.join("resources");
-            config_manager::set_resource_base_path(resource_base);
+            println!("Web root directory: {:?}\n", web_root);
+
+            // 初始化配置和目錄
+            // 設置資源基礎路徑（用於配置檔案等）
+            config_manager::set_resource_base_path(web_root.clone());
             
             // Ensure config directory exists
             let config_dir = config_manager::get_hidden_config_dir("data");
@@ -102,20 +161,20 @@ pub fn run() {
                 resource_manager: resource_manager.clone(),
             });
 
-            // Start local HTTP server for resources
+            // === 步驟 3: 啟動 HTTP 伺服器 ===
             let resource_manager_filter = warp::any().map(move || resource_manager.clone());
             let resource_manager_filter_status = resource_manager_filter.clone();
             
             tauri::async_runtime::spawn(async move {
-                println!("Starting local resource server at http://127.0.0.1:8765/");
+                println!("=== Starting HTTP Server ===");
+                println!("Server: http://127.0.0.1:8765/");
+                println!("Frontend root: {:?}\n", web_root);
+                
                 let cors = warp::cors()
                     .allow_any_origin()
                     .allow_methods(vec!["GET", "POST", "OPTIONS"]);
 
-                let resource_route = warp::path::tail()
-                    .and(resource_manager_filter)
-                    .and_then(handle_resource_request);
-                
+                // 狀態查詢路由
                 let status_route = warp::path("status")
                     .and(resource_manager_filter_status)
                     .map(|rm: Arc<ResourceManager>| {
@@ -123,10 +182,27 @@ pub fn run() {
                         warp::reply::json(&status)
                     });
 
-                // status_route must come first because resource_route matches everything
-                let routes = status_route.or(resource_route).with(cors);
+                // passionfruit 資源路由
+                let passionfruit_route = warp::path("passionfruit")
+                    .and(warp::path::tail())
+                    .and(resource_manager_filter)
+                    .and_then(handle_passionfruit_request);
 
-                // Listen on port 8765 (same as old python server)
+                // 靜態前端檔案路由（最後匹配）
+                let static_route = warp::path::tail()
+                    .and_then(move |path: warp::path::Tail| {
+                        let web_root = web_root.clone();
+                        async move {
+                            handle_static_file(path, web_root).await
+                        }
+                    });
+
+                // 路由優先級：status > passionfruit > static
+                let routes = status_route
+                    .or(passionfruit_route)
+                    .or(static_route)
+                    .with(cors);
+
                 warp::serve(routes).run(([127, 0, 0, 1], 8765)).await;
             });
             
@@ -167,7 +243,8 @@ pub fn run() {
             commands::get_config_volume,
             commands::log_message,
             commands::check_for_updates,
-            commands::perform_update
+            commands::perform_update,
+            commands::toggle_fullscreen
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

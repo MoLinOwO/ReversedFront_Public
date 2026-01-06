@@ -21,7 +21,8 @@ export function setupAudioControls(controlsPanel) {
         if (!selected) return null;
         
         try {
-            const accounts = await window.pywebview.api.get_accounts();
+            if (!window.__TAURI__?.core) return null;
+            const accounts = await window.__TAURI__.core.invoke('get_accounts');
             if (accounts && selected.accountIdx < accounts.length) {
                 return accounts[selected.accountIdx];
             }
@@ -170,7 +171,7 @@ export function setupAudioControls(controlsPanel) {
                 
                 // 滑動結束後執行一次保存
                 const value = Number(bgmSlider.value);
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
+                if (window.__TAURI__?.core) {
                     getCurrentAccountData().then(targetAccount => {
                         const saveData = {
                             bgm: value,
@@ -180,7 +181,7 @@ export function setupAudioControls(controlsPanel) {
                         if (targetAccount) {
                             saveData.target_account = targetAccount;
                         }
-                        window.pywebview.api.save_config_volume(saveData).catch(e => { 
+                        window.__TAURI__.core.invoke('save_config_volume', { data: JSON.stringify(saveData) }).catch(e => { 
                             console.error('音量設定保存失敗', e); 
                         });
                     });
@@ -195,7 +196,7 @@ export function setupAudioControls(controlsPanel) {
                 
                 // 滑動結束後執行一次保存
                 const value = Number(bgmSlider.value);
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
+                if (window.__TAURI__?.core) {
                     getCurrentAccountData().then(targetAccount => {
                         const saveData = {
                             bgm: value,
@@ -205,7 +206,7 @@ export function setupAudioControls(controlsPanel) {
                         if (targetAccount) {
                             saveData.target_account = targetAccount;
                         }
-                        window.pywebview.api.save_config_volume(saveData).catch(e => { 
+                        window.__TAURI__.core.invoke('save_config_volume', { data: JSON.stringify(saveData) }).catch(e => { 
                             console.error('音量設定保存失敗', e); 
                         });
                     });
@@ -261,7 +262,7 @@ export function setupAudioControls(controlsPanel) {
                 
                 // 滑動結束後執行一次保存
                 const value = Number(seSlider.value);
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
+                if (window.__TAURI__?.core) {
                     getCurrentAccountData().then(targetAccount => {
                         const saveData = {
                             bgm: null,  // 不傳入則不更新
@@ -271,7 +272,7 @@ export function setupAudioControls(controlsPanel) {
                         if (targetAccount) {
                             saveData.target_account = targetAccount;
                         }
-                        window.pywebview.api.save_config_volume(saveData).catch(e => { 
+                        window.__TAURI__.core.invoke('save_config_volume', { data: JSON.stringify(saveData) }).catch(e => { 
                             console.error('音量設定保存失敗', e); 
                         });
                     });
@@ -286,7 +287,7 @@ export function setupAudioControls(controlsPanel) {
                 
                 // 滑動結束後執行一次保存
                 const value = Number(seSlider.value);
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
+                if (window.__TAURI__?.core) {
                     getCurrentAccountData().then(targetAccount => {
                         const saveData = {
                             bgm: null,  // 不傳入則不更新
@@ -296,7 +297,7 @@ export function setupAudioControls(controlsPanel) {
                         if (targetAccount) {
                             saveData.target_account = targetAccount;
                         }
-                        window.pywebview.api.save_config_volume(saveData).catch(e => { 
+                        window.__TAURI__.core.invoke('save_config_volume', { data: JSON.stringify(saveData) }).catch(e => { 
                             console.error('音量設定保存失敗', e); 
                         });
                     });
@@ -343,7 +344,7 @@ export function setupAudioControls(controlsPanel) {
                 if (window.setMediaVolume) window.setMediaVolume();
                 if (window.updateSe147Volume) window.updateSe147Volume();
                 // 保存設置
-                if (window.pywebview && window.pywebview.api && window.pywebview.api.save_config_volume) {
+                if (window.__TAURI__?.core) {
                     const targetAccount = await getCurrentAccountData();
                     const saveData = {
                         bgm: null,
@@ -353,7 +354,7 @@ export function setupAudioControls(controlsPanel) {
                     if (targetAccount) {
                         saveData.target_account = targetAccount;
                     }
-                    await window.pywebview.api.save_config_volume(saveData);
+                    await window.__TAURI__.core.invoke('save_config_volume', { data: JSON.stringify(saveData) });
                     console.log('戰報通知設定已保存:', newMuted);
                 }
             } catch (e) {
@@ -372,7 +373,7 @@ export function setupAudioControls(controlsPanel) {
     
     // 創建一個全局可調用的音量同步函數
     window.syncAudioControlsWithConfig = async function(targetAccount = null) {
-        if (!window.pywebview || !window.pywebview.api || !window.pywebview.api.get_config_volume) {
+        if (!window.__TAURI__?.core) {
             console.log('API 尚未準備好，跳過音量同步');
             return;
         }
@@ -386,7 +387,7 @@ export function setupAudioControls(controlsPanel) {
             }
             
             console.log('使用帳號資料:', targetAccount);
-            const cfg = await window.pywebview.api.get_config_volume(targetAccount);
+            const cfg = await window.__TAURI__.core.invoke('get_config_volume', { targetAccount });
             console.log('獲取音量設定:', cfg);
             
             // 使用 globalAudioControl.js 提供的統一音頻配置應用函數
@@ -444,7 +445,7 @@ export function setupAudioControls(controlsPanel) {
             return;
         }
         
-        if (window.pywebview && window.pywebview.api && window.pywebview.api.get_config_volume) {
+        if (window.__TAURI__?.core) {
             hasSynced = true;
             
             // 使用新的全局同步函數

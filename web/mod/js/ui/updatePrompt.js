@@ -88,9 +88,9 @@ export function initUpdatePrompt() {
             const p = content.querySelector('p');
             if (p) p.textContent = '正在下載更新檔，下載完成後將自動重啟安裝...';
             
-            if (window.pywebview && window.pywebview.api && window.pywebview.api.perform_update) {
+            if (!window.__TAURI__ && window.__TAURI__?.core) {
                 try {
-                    await window.pywebview.api.perform_update(url, filename);
+                    await window.__TAURI__.core.invoke('perform_update', { url, filename });
                 } catch (e) {
                     console.error('Update failed:', e);
                     p.textContent = '更新失敗: ' + e;
