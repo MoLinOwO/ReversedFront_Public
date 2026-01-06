@@ -11,18 +11,18 @@ pub fn set_resource_base_path(path: PathBuf) {
 }
 
 pub fn get_hidden_config_dir(target: &str) -> PathBuf {
-    // Dev mode: use local assets folder
+    // Dev mode: use local workspace root
     #[cfg(debug_assertions)]
     {
         let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
         if path.ends_with("src-tauri") {
             path.pop();
         }
-        path.push("assets");
+        // 不再 push "assets"，直接使用根目錄
         if target == "passionfruit" {
             path.push("passionfruit");
         } else if target == "root" {
-            // Return assets root
+            // Return root
         } else {
             path.push("mod");
             path.push("data");

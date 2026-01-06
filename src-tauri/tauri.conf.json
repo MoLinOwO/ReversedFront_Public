@@ -5,7 +5,7 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "frontendDist": "../assets"
+    "frontendDist": "."
   },
   "bundle": {
     "active": true,
