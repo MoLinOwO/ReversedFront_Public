@@ -6,14 +6,14 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
-# 原始碼保護 - 只保留打包後的 bundle
-web/mod/js/account/
-web/mod/js/audio/
-web/mod/js/core/
-web/mod/js/map/
-web/mod/js/ui/
-web/mod/js/index.js
-web/mod/js/tauri_bridge.js
+# 原始碼保護 - 只保留打包後的 bundle - 已移除，改用分支策略管理
+# web/mod/js/account/
+# web/mod/js/audio/
+# web/mod/js/core/
+# web/mod/js/map/
+# web/mod/js/ui/
+# web/mod/js/index.js
+# web/mod/js/tauri_bridge.js
 
 # IDE
 .vscode/
