@@ -356,18 +356,18 @@ function addDialogStyles() {
 
 // 切換全屏模式
 function toggleFullscreen() {
-    if (!window.__TAURI__?.api) {
-        const isCurrentlyFullScreen = document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement;
-        const targetMode = isCurrentlyFullScreen ? 'normal' : 'fullscreen';
-        if (!window.__TAURI__.core.set_window_mode) {
-            window.__TAURI__.core.invoke('set_window_mode', { targetMode });
-        }
-        window.__TAURI__.core.invoke('toggle_fullscreen');
-        console.log('[控制面板] 切換全屏模式，預期狀態:', targetMode);
+    if (!window.__TAURI__?.core) return;
+
+    const isCurrentlyFullScreen = document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement;
+    const targetMode = isCurrentlyFullScreen ? 'normal' : 'fullscreen';
+    if (!window.__TAURI__.core.set_window_mode) {
+        window.__TAURI__.core.invoke('set_window_mode', { targetMode });
     }
+    window.__TAURI__.core.invoke('toggle_fullscreen');
+    console.log('[控制面板] 切換全屏模式，預期狀態:', targetMode);
 }
 
 // 下載狀態已整合到控制面板中，不再需要獨立的對話框
@@ -382,9 +382,10 @@ function showDownloadStatus() {
 
 // 顯示音量設定
 function showVolumeSettings() {
-    if (!window.__TAURI__?.api) {
-        // 獲取當前音量設定
-        window.__TAURI__.core.invoke('get_config_volume', {  }).then(volume => {
+    if (!window.__TAURI__?.core) return;
+
+    // 獲取當前音量設定
+    window.__TAURI__.core.invoke('get_config_volume', {  }).then(volume => {
             // 創建對話框
             const dialog = document.createElement('div');
             dialog.className = 'rf-download-status'; // 重用樣式
@@ -433,7 +434,6 @@ function showVolumeSettings() {
                 });
             });
         });
-    }
 }
 
 // 關於頁面已移除
@@ -543,7 +543,7 @@ export function setupCustomControls() {
         
         // 設置定期更新下載狀態（優化版）
         function updateControlPanelDownloadStatus() {
-            if (!window.__TAURI__?.api) return;
+            if (!window.__TAURI__?.core) return;
             
             // 使用 Promise 以提高可靠性
             // 檢查是否正在卸載頁面，如果是則不執行
