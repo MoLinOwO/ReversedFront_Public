@@ -78,8 +78,12 @@ pub fn run() {
             
             println!("Resource directory: {:?}", resource_path);
             
-            // 設置全局資源路徑（需要在 config_manager 中添加）
-            config_manager::set_resource_base_path(resource_path);
+            // 設置全局資源路徑（Resource path now points to a flattened structure usually, 
+            // but since we copy to resources/, and include resources/**/*,
+            // the structure in resource_dir will be resources/mod/...
+            // So we join "resources" here to keep the rest of the code working with base path.
+            let resource_base = resource_path.join("resources");
+            config_manager::set_resource_base_path(resource_base);
             
             // Ensure config directory exists
             let config_dir = config_manager::get_hidden_config_dir("data");

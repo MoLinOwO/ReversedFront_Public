@@ -70,3 +70,4 @@ logs/
 web/mod/data/config.json
 
 src-tauri/target/
+src-tauri/resources/
