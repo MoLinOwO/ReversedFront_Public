@@ -1,5 +1,6 @@
 // 勢力分布圖繪製模組
 import { getFactionByColor, getFactionColor, getAllFactions } from './factionColorMap.js';
+import { Delaunay as D3Delaunay } from 'd3-delaunay';
 
 // marker 顏色快取（以 marker dom id 或座標為 key）
 const markerColorCache = new Map();
@@ -72,20 +73,6 @@ export function collectMarkerData(canvasWidth, canvasHeight) {
 // 允許所有 rgb 對應表內的陣營
 // const allowedFactions = getAllFactions().map(f => f.name); // 不再使用
 
-// 動態載入 d3-delaunay
-async function loadD3Delaunay() {
-    if (window.d3 && window.d3.Delaunay) return window.d3.Delaunay;
-    try {
-        // The script will attach d3 to the window object, or return it as a module
-    const d3 = await import('d3-delaunay');
-        return d3.Delaunay || (window.d3 && window.d3.Delaunay);
-    } catch (error) {
-        console.error("無法載入 d3-delaunay 函式庫:", error);
-        return null;
-    }
-}
-
-
 /**
  * 優化版：drawFactionMapBaseOptimized
  * - 批次快取 marker 資訊，減少 DOM 操作
@@ -97,17 +84,11 @@ export async function drawFactionMapBaseOptimized(ctx, markerData) {
     const width = ctx.canvas.width, height = ctx.canvas.height;
     const validMarkerData = markerData.filter(m => isFinite(m.x) && isFinite(m.y) && m.faction && m.faction !== '未知');
     if (validMarkerData.length < 3) return;
-    // Delaunay
-    let Delaunay;
-    if (window.d3 && window.d3.Delaunay) {
-        Delaunay = window.d3.Delaunay;
-    } else {
-        try {
-            const d3 = await import('d3-delaunay');
-            Delaunay = d3.Delaunay || (window.d3 && window.d3.Delaunay);
-        } catch {
-            return;
-        }
+    // Delaunay：改用靜態匯入，避免動態載入 chunk 失敗
+    const Delaunay = D3Delaunay || (window.d3 && window.d3.Delaunay);
+    if (!Delaunay) {
+        console.error('Delaunay 函式不存在，請確認 d3-delaunay 是否正確載入');
+        return;
     }
     const points = validMarkerData.map(m => [m.x, m.y]);
     const delaunay = Delaunay.from(points);
