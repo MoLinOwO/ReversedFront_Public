@@ -1,6 +1,6 @@
 {
   "productName": "ReversedFront",
-  "version": "2.11.1",
+  "version": "2.11.2",
   "identifier": "com.reversedfront.app",
   "build": {
     "beforeDevCommand": "",

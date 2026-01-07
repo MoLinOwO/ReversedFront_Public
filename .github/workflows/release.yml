@@ -6,6 +6,8 @@ on:
 
 jobs:
   build-and-release:
+    env:
+      VERSION: ${{ github.ref_name }}
     permissions:
       contents: write
     strategy:
@@ -68,6 +70,66 @@ jobs:
         run: |
           cd src-tauri
           cargo tauri build ${{ matrix.args }}
+
+      - name: Rename Artifacts (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          set -e
+          echo "Version: ${VERSION}"
+
+          deb_file=$(ls src-tauri/target/release/bundle/deb/*.deb 2>/dev/null | head -n 1 || true)
+          if [ -n "$deb_file" ]; then
+            mv "$deb_file" "src-tauri/target/release/bundle/deb/ReversedFront_${VERSION}.deb"
+          fi
+
+          appimage_file=$(ls src-tauri/target/release/bundle/appimage/*.AppImage 2>/dev/null | head -n 1 || true)
+          if [ -n "$appimage_file" ]; then
+            mv "$appimage_file" "src-tauri/target/release/bundle/appimage/ReversedFront_${VERSION}.AppImage"
+          fi
+
+      - name: Rename Artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = "$env:VERSION"
+          Write-Host "Version: $version"
+
+          $nsisDir = "src-tauri/target/release/bundle/nsis"
+          $msiDir = "src-tauri/target/release/bundle/msi"
+
+          if (Test-Path $nsisDir) {
+            $nsis = Get-ChildItem $nsisDir -Filter *.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($nsis) {
+              $target = Join-Path $nsisDir "ReversedFront_$version.exe"
+              Move-Item $nsis.FullName $target -Force
+            }
+          }
+
+          if (Test-Path $msiDir) {
+            $msi = Get-ChildItem $msiDir -Filter *.msi -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($msi) {
+              $target = Join-Path $msiDir "ReversedFront_$version.msi"
+              Move-Item $msi.FullName $target -Force
+            }
+          }
+
+      - name: Rename Artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          set -e
+          echo "Version: ${VERSION}"
+
+          dmg_file=$(find src-tauri/target -path "*bundle/dmg/*.dmg" | head -n 1 || true)
+          if [ -n "$dmg_file" ]; then
+            dmg_dir=$(dirname "$dmg_file")
+            mv "$dmg_file" "$dmg_dir/ReversedFront_${VERSION}.dmg"
+          fi
+
+          app_file=$(find src-tauri/target -path "*bundle/macos/*.app.tar.gz" | head -n 1 || true)
+          if [ -n "$app_file" ]; then
+            app_dir=$(dirname "$app_file")
+            mv "$app_file" "$app_dir/ReversedFront_${VERSION}.app.tar.gz"
+          fi
 
       - name: List build artifacts (macOS)
         if: matrix.platform == 'macos-latest'
