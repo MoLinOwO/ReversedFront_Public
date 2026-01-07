@@ -45,6 +45,12 @@ export async function renderAccountManager(accountSection, autofillActiveAccount
         radio.onchange = async function() {
             window.currentSelectedAccountIdx = parseInt(this.value);
             sessionStorage.setItem('currentSelectedAccountIdx', window.currentSelectedAccountIdx);
+
+            // 同步後端的 active_account_index，確保重啟後仍維持同一個帳號
+            try {
+                await api.setActiveAccount(window.currentSelectedAccountIdx);
+            } catch (e) {}
+
             renderAccountManager(accountSection, autofillActiveAccount);
             autofillActiveAccount();
             // 切換帳號時自動同步音量UI（含se147_muted）
@@ -177,6 +183,11 @@ export function setupLoginInterceptor(accountSection, autofillActiveAccount) {
                                     accountSelect.selectedIndex = idx;
                                     accountSelect.dispatchEvent(new Event('change', { bubbles: true }));
                                 }
+
+                                // 同步後端 active_account_index
+                                try {
+                                    await api.setActiveAccount(idx);
+                                } catch (e) {}
                             }
                         } catch (e) {
                             console.error('Failed to save account on login:', e);
@@ -326,13 +337,29 @@ export async function autofillActiveAccount() {
     }
 }
 
-// 獲取當前界面選擇的帳號
+// 獲取當前應該用來自動登入的帳號
 async function getCurrentSelectedAccountForLogin() {
     try {
         const accounts = await api.getAccounts();
         if (!accounts || accounts.length === 0) return null;
-        
-        // 查找當前選中的 radio button
+
+        // 1. 優先使用功能選單記憶的 index（不依賴畫面是否已渲染完成）
+        let idx = typeof window.currentSelectedAccountIdx === 'number'
+            ? window.currentSelectedAccountIdx
+            : null;
+        if (idx === null) {
+            const savedIdx = sessionStorage.getItem('currentSelectedAccountIdx');
+            if (savedIdx !== null) {
+                idx = parseInt(savedIdx);
+            }
+        }
+        if (Number.isInteger(idx) && idx >= 0 && idx < accounts.length) {
+            const selectedAccount = accounts[idx];
+            console.log(`自動登入將使用功能選單記憶的帳號: ${selectedAccount.account} (索引: ${idx})`);
+            return selectedAccount;
+        }
+
+        // 2. 其次嘗試讀取目前畫面上的 radio 選擇
         const selectedRadio = document.querySelector('input[name="account-radio"]:checked');
         if (selectedRadio) {
             const selectedIdx = parseInt(selectedRadio.value);
@@ -342,8 +369,8 @@ async function getCurrentSelectedAccountForLogin() {
                 return selectedAccount;
             }
         }
-        
-        // 如果沒有找到選中的 radio，回退到 active account
+
+        // 3. 最後回退到後端配置的活動帳號
         const activeAccount = await api.getActiveAccount();
         if (activeAccount) {
             console.log(`自動登入回退到配置中的活動帳號: ${activeAccount.account}`);
