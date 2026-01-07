@@ -338,44 +338,26 @@ export async function autofillActiveAccount() {
 }
 
 // 獲取當前應該用來自動登入的帳號
+// 這裡統一依照後端的 active_account_index 決定，
+// 而功能選單在切換帳號時會呼叫 setActiveAccount 保持同步。
 async function getCurrentSelectedAccountForLogin() {
     try {
-        const accounts = await api.getAccounts();
-        if (!accounts || accounts.length === 0) return null;
-
-        // 1. 優先使用功能選單記憶的 index（不依賴畫面是否已渲染完成）
-        let idx = typeof window.currentSelectedAccountIdx === 'number'
-            ? window.currentSelectedAccountIdx
-            : null;
-        if (idx === null) {
-            const savedIdx = sessionStorage.getItem('currentSelectedAccountIdx');
-            if (savedIdx !== null) {
-                idx = parseInt(savedIdx);
-            }
-        }
-        if (Number.isInteger(idx) && idx >= 0 && idx < accounts.length) {
-            const selectedAccount = accounts[idx];
-            console.log(`自動登入將使用功能選單記憶的帳號: ${selectedAccount.account} (索引: ${idx})`);
-            return selectedAccount;
-        }
-
-        // 2. 其次嘗試讀取目前畫面上的 radio 選擇
-        const selectedRadio = document.querySelector('input[name="account-radio"]:checked');
-        if (selectedRadio) {
-            const selectedIdx = parseInt(selectedRadio.value);
-            if (selectedIdx >= 0 && selectedIdx < accounts.length) {
-                const selectedAccount = accounts[selectedIdx];
-                console.log(`自動登入將使用界面選擇的帳號: ${selectedAccount.account} (索引: ${selectedIdx})`);
-                return selectedAccount;
-            }
-        }
-
-        // 3. 最後回退到後端配置的活動帳號
+        // 優先使用後端記錄的 active account（與功能選單同步）
         const activeAccount = await api.getActiveAccount();
-        if (activeAccount) {
-            console.log(`自動登入回退到配置中的活動帳號: ${activeAccount.account}`);
+        if (activeAccount && activeAccount.account && activeAccount.password) {
+            console.log(`自動登入將使用後端活動帳號: ${activeAccount.account}`);
+            return activeAccount;
         }
-        return activeAccount;
+
+        // 如果尚未設定 active，退回到帳號列表中的第一個
+        const accounts = await api.getAccounts();
+        if (accounts && accounts.length > 0) {
+            const first = accounts[0];
+            console.log(`自動登入找不到活動帳號，改用第一個帳號: ${first.account}`);
+            return first;
+        }
+
+        return null;
     } catch (e) {
         console.error('獲取當前選擇帳號失敗:', e);
         return null;
