@@ -1,6 +1,6 @@
 [package]
 name = "reversed-front"
-version = "2.11.2"
+version = "2.11.3"
 description = "Reversed Front Desktop App"
 authors = ["you"]
 edition = "2021"
