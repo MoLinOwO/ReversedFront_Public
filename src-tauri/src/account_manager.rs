@@ -11,11 +11,34 @@ pub struct Account {
 
 pub fn get_accounts() -> Vec<Value> {
     let config = load_config();
-    if let Some(accounts) = config.get("accounts") {
-        if let Some(arr) = accounts.as_array() {
+
+    // 這裡順便負責初始化 / 修正 active_account_index，
+    // 確保玩家一開啟功能選單時就會把預設選取帳號寫入 config.json。
+    if let Some(accounts_val) = config.get("accounts") {
+        if let Some(arr) = accounts_val.as_array() {
+            // 如果有帳號，就檢查 active_account_index 是否存在且在範圍內
+            if !arr.is_empty() {
+                let raw_idx = config
+                    .get("active_account_index")
+                    .and_then(|v| v.as_u64());
+
+                let mut idx = raw_idx.unwrap_or(0) as usize;
+                if idx >= arr.len() {
+                    idx = 0;
+                }
+
+                // 若原本沒有這個欄位，或是已經超出範圍，就寫回修正後的值
+                if raw_idx.map(|v| v as usize) != Some(idx) {
+                    update_config_fields(serde_json::json!({
+                        "active_account_index": idx
+                    }));
+                }
+            }
+
             return arr.clone();
         }
     }
+
     Vec::new()
 }
 

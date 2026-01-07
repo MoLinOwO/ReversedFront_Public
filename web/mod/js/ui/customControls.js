@@ -277,7 +277,16 @@ function createFactionFilterDropdown(controlsPanel) {
                 const radios = document.querySelectorAll('input[name="account-radio"]');
                 if (radios && accountSelect.selectedIndex >= 0) {
                     radios.forEach((r, i) => {
-                        r.checked = (i === accountSelect.selectedIndex);
+                        const shouldCheck = (i === accountSelect.selectedIndex);
+                        const wasChecked = r.checked;
+                        r.checked = shouldCheck;
+
+                        // 當透過下拉選單切換帳號時，主動觸發對應 radio 的 change，
+                        // 讓原本在 accountManager.js 綁定的邏輯（更新 window.currentSelectedAccountIdx、
+                        // 呼叫 setActiveAccount 等）一併執行，確保後端 active_account_index 同步。
+                        if (shouldCheck && !wasChecked) {
+                            r.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
                     });
                 }
             });

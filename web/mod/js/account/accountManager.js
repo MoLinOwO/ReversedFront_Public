@@ -4,16 +4,60 @@ import { $ } from '../core/utils.js';
 // 帳號管理模組
 
 // 用 window.currentSelectedAccountIdx 儲存目前選取的帳號 index
+// 第一次啟動時會優先依照後端的 active_account_index 對齊，
 if (typeof window.currentSelectedAccountIdx !== 'number') {
     const savedIdx = sessionStorage.getItem('currentSelectedAccountIdx');
     window.currentSelectedAccountIdx = savedIdx !== null ? parseInt(savedIdx) : 0;
+    window.accountIndexInitializedFromBackend = false;
 }
+// 之後才使用 sessionStorage 當作本次啟動過程中的快取。
 
 export async function renderAccountManager(accountSection, autofillActiveAccount) {
     let accounts = [];
     try {
         accounts = await api.getAccounts();
     } catch(e) {}
+
+    // 第一次啟動時：優先依照後端 active_account_index（getActiveAccount）
+    // 決定預設選取的帳號，之後就只依照目前記憶的 index。
+    if (!window.accountIndexInitializedFromBackend) {
+        try {
+            const activeAccount = await api.getActiveAccount();
+            if (activeAccount && activeAccount.account && Array.isArray(accounts) && accounts.length > 0) {
+                const idx = accounts.findIndex(a => a.account === activeAccount.account);
+                if (idx >= 0 && idx < accounts.length) {
+                    window.currentSelectedAccountIdx = idx;
+                }
+            }
+        } catch (e) {}
+
+        // 若後端沒有給或超出範圍，仍然用原本的 sessionStorage 值（在頂部已初始化）
+        if (!Number.isInteger(window.currentSelectedAccountIdx) || window.currentSelectedAccountIdx < 0 || window.currentSelectedAccountIdx >= accounts.length) {
+            window.currentSelectedAccountIdx = 0;
+        }
+
+        sessionStorage.setItem('currentSelectedAccountIdx', window.currentSelectedAccountIdx);
+        window.accountIndexInitializedFromBackend = true;
+    }
+
+    // 首次渲染時，嘗試依照後端的 active_account_index 對齊預設選取帳號
+    if (window.__TAURI__?.core && !window.accountIndexInitializedFromBackend) {
+        try {
+            const activeAccount = await api.getActiveAccount();
+            if (activeAccount && activeAccount.account) {
+                const idx = accounts.findIndex(a => a.account === activeAccount.account);
+                if (idx !== -1) {
+                    window.currentSelectedAccountIdx = idx;
+                    sessionStorage.setItem('currentSelectedAccountIdx', idx);
+                }
+            }
+        } catch (e) {
+            // 忽略錯誤，後續會用預設 0 處理
+        } finally {
+            window.accountIndexInitializedFromBackend = true;
+        }
+    }
+
     // 若目前選取 index 超出範圍，自動歸零
     if (window.currentSelectedAccountIdx >= accounts.length) {
         window.currentSelectedAccountIdx = 0;
