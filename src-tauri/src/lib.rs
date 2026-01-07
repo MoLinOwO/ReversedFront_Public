@@ -131,6 +131,9 @@ async fn handle_passionfruit_request(
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
+            // 啟動時嘗試清理舊的安裝程式檔案
+            crate::updater::cleanup_old_installers();
+
             // 開發 / 生產共用：決定前端資源根目錄
             let web_root = if cfg!(debug_assertions) {
                 // 開發模式：使用專案目錄下的 web/

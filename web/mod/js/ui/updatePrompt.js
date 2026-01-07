@@ -88,7 +88,8 @@ export function initUpdatePrompt() {
             const p = content.querySelector('p');
             if (p) p.textContent = '正在下載更新檔，下載完成後將自動重啟安裝...';
             
-            if (!window.__TAURI__ && window.__TAURI__?.core) {
+            // 僅在 Tauri 環境下才呼叫更新指令
+            if (window.__TAURI__?.core) {
                 try {
                     await window.__TAURI__.core.invoke('perform_update', { url, filename });
                 } catch (e) {
